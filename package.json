@@ -40,10 +40,14 @@
   },
   "scripts": {
     "start": "expo start",
+    "start:test": "APP_ENV=test expo start",
+    "start:staging": "APP_ENV=staging expo start",
+    "start:prod": "APP_ENV=prod expo start",
     "reset-project": "node ./scripts/reset-project.js",
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
+    "env:print": "expo config --type public",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc --noEmit"
