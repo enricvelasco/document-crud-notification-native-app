@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from 'react'
 
-import { type LanguageOptionModel, languageService, type LanguageTypes } from '@/services/language'
+import { type LanguageOptionModel, languageService, type LanguageTypes } from '@services/language'
 
 export interface UseLanguageModel {
   language: LanguageTypes

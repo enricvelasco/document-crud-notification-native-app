@@ -1,4 +1,4 @@
-import { httpService } from '@/services/http'
+import { httpService } from '@services/http'
 
 import { documentContributorPayloadToModel } from './mappers/documentContributorPayloadToModel'
 import { documentListPayloadToModel } from './mappers/documentListPayloadToModel'
@@ -7,7 +7,7 @@ import { documentListMock, documentListPayloadMock, getDocumentListResponseMock 
 import { DocumentError } from './models'
 import { getDocumentList } from './repositories/getDocumentList'
 
-jest.mock('@/services/http', () => ({
+jest.mock('@services/http', () => ({
   httpService: { get: jest.fn() },
 }))
 

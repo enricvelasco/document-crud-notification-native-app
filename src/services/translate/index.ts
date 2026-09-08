@@ -1,5 +1,5 @@
-import { DEFAULT_LANGUAGE, languageService } from '@/services/language'
-import { translations } from '@/translations'
+import { DEFAULT_LANGUAGE, languageService } from '@services/language'
+import { translations } from '@translations'
 
 import { createI18nJsTranslateAdapter } from './adapters/i18nJsTranslateAdapter'
 

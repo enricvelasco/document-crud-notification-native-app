@@ -1,6 +1,6 @@
 import { I18n } from 'i18n-js'
 
-import type { TranslationKeyType } from '@/translations'
+import type { TranslationKeyType } from '@translations'
 
 import type { TranslateConfigModel, TranslateParamsModel, TranslateServiceModel } from '../models'
 

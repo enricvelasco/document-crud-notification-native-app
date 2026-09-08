@@ -1,4 +1,4 @@
-import type { LanguageTypes } from '@/services/language'
+import type { LanguageTypes } from '@services/language'
 
 import type { TranslationsModel } from './translationsModel'
 
