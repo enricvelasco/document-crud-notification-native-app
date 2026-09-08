@@ -38,6 +38,10 @@ module.exports = defineConfig([
         singleline: { delimiter: 'comma', requireLast: false },
       }],
 
+      // --- every function is a const bound to an arrow function ---
+      'func-style': ['error', 'expression', { allowArrowFunctions: true }],
+      'prefer-arrow-callback': 'error',
+
       // --- max 2 parameters per function (core rule; TS-aware override below) ---
       'max-params': ['error', { max: 2 }],
 
@@ -57,6 +61,9 @@ module.exports = defineConfig([
         arrays: 'only-multiline',
         objects: 'only-multiline',
         functions: 'only-multiline',
+        // `<T,>` disambiguates a generic arrow from a JSX tag in .tsx — that
+        // comma is syntax, not style, so it is not policed.
+        generics: 'ignore',
       }],
       '@stylistic/no-trailing-spaces': 'error',
       // 2-space indent for non-JSX code (keeps wrapped imports aligned);
@@ -78,6 +85,10 @@ module.exports = defineConfig([
       // --- max 2 parameters per function (TS-aware: ignores an explicit `this`) ---
       'max-params': 'off',
       '@typescript-eslint/max-params': ['error', { max: 2 }],
+
+      // --- `as const` object + derived type sharing one name (no-typescript-enum
+      //     policy) is a deliberate declaration merge, not a redeclaration ---
+      '@typescript-eslint/no-redeclare': 'off',
 
       // --- camelCase, with sensible exceptions ---
       camelcase: 'off',
@@ -124,6 +135,19 @@ module.exports = defineConfig([
           format: null,
         },
       ],
+    },
+  },
+
+  {
+    // --- the http port is the only way to reach the network ---
+    // Only its adapter may touch the transport library/global directly.
+    files: ['src/**/*.ts', 'src/**/*.tsx'],
+    ignores: ['src/services/http/adapters/**'],
+    rules: {
+      'no-restricted-globals': ['error', {
+        name: 'fetch',
+        message: 'Import @/services/http instead — only its adapter may use the transport directly.',
+      }],
     },
   },
 

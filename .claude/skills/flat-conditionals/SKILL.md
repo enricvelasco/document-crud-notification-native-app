@@ -34,7 +34,7 @@ indentation level.
 
 ```ts
 // ❌ nested
-function getPrice(user: User | null, cart: Cart): number {
+const getPrice = (user: User | null, cart: Cart): number => {
   if (user) {
     if (user.isPremium) {
       if (cart.total > 100) {
@@ -48,7 +48,7 @@ function getPrice(user: User | null, cart: Cart): number {
 }
 
 // ✅ flat: guard clauses + one ternary for the final two-value choice
-function getPrice(user: User | null, cart: Cart): number {
+const getPrice = (user: User | null, cart: Cart): number => {
   if (!isPremium(user)) return cart.total
   return qualifiesForBulkDiscount(cart) ? cart.total * 0.8 : cart.total * 0.9
 }
@@ -86,7 +86,7 @@ that is the signal to extract a function or switch to early returns. Chained
     : <List items={items} />}
 
 // ✅ early returns in the component
-function Feed({ status, items }: FeedProps) {
+const Feed = ({ status, items }: FeedProps) => {
   if (status === 'loading') return <Spinner />
   if (status === 'error') return <ErrorState />
   return <List items={items} />
@@ -134,20 +134,18 @@ Put it in the context that owns the rule, and give it a sibling unit test.
 // src/hooks/use-can-submit.ts
 import { hasValidEmail, hasValidName } from '@/utils/validation'
 
-export function useCanSubmit(form: FormState): boolean {
-  return hasValidName(form.name) && hasValidEmail(form.email)
-}
+export const useCanSubmit = (form: FormState): boolean =>
+  hasValidName(form.name) && hasValidEmail(form.email)
 ```
 
 ```tsx
 // src/components/checkout-button.tsx — decision specific to this component
-function isCheckoutBlocked(cart: Cart): boolean {
-  return cart.items.length === 0 || cart.isSyncing
-}
+const isCheckoutBlocked = (cart: Cart): boolean =>
+  cart.items.length === 0 || cart.isSyncing
 
-export function CheckoutButton({ cart }: CheckoutButtonProps) {
-  return <Button disabled={isCheckoutBlocked(cart)} onPress={checkout} />
-}
+export const CheckoutButton = ({ cart }: CheckoutButtonProps) => (
+  <Button disabled={isCheckoutBlocked(cart)} onPress={checkout} />
+)
 ```
 
 ## Decision guide
@@ -170,4 +168,6 @@ export function CheckoutButton({ cart }: CheckoutButtonProps) {
 - Typed: return `boolean`, or a type guard (`(x): x is Foo`) when it also
   narrows.
 - Respect project style: no semicolons, 2-space indent, max 2 parameters per
-  function (bundle extra inputs into one options object).
+  function (bundle extra inputs into one options object), and declared as a
+  `const` arrow function above its first use (see the
+  arrow-function-declarations policy).

@@ -23,7 +23,7 @@ Screen receives the model, there is no mapping left to do** — the Screen only
 paints.
 
 Layering: `src/app/` route → `<Entity><Purpose>Screen` (`.tsx`, paints) →
-`<Entity><Purpose>View` (`.ts`, loads + maps) → `@/domains/*` → transport.
+`<Entity><Purpose>View` (`.ts`, loads + maps) → `@/core/domains/*` → transport.
 
 ## Folder layout
 
@@ -32,7 +32,7 @@ src/views/<Entity><Purpose>View/
 ├── index.ts          # entry point — re-exports the loader (+ its models)
 ├── view.ts           # the loader: Promise.allSettled over N domain calls
 ├── mappers/
-│   └── <entity>ViewMapper.ts   # settled results → view model (final shape)
+│   └── <entity>ToViewModel.ts  # settled results → view model (final shape)
 ├── models/
 │   ├── index.ts                # re-exports every model
 │   ├── <entity>ViewModel.ts    # interfaces → `Model` suffix
@@ -59,19 +59,19 @@ its data or a **controlled error message** for that specific section.
 
 ```ts
 // src/views/DocumentListView/view.ts
-import { listAuthors } from '@/domains/author'
-import { listDocuments } from '@/domains/document'
+import { listAuthors } from '@/core/domains/author'
+import { listDocuments } from '@/core/domains/document'
 
-import { toDocumentListViewModel } from './mappers/documentListViewMapper'
+import { documentListToViewModel } from './mappers/documentListToViewModel'
 import type { DocumentListViewModel } from './models'
 
-export async function loadDocumentListView(): Promise<DocumentListViewModel> {
+export const loadDocumentListView = async (): Promise<DocumentListViewModel> => {
   const [documents, authors] = await Promise.allSettled([
     listDocuments(),
     listAuthors(),
   ])
 
-  return toDocumentListViewModel({ documents, authors })
+  return documentListToViewModel({ documents, authors })
 }
 ```
 
@@ -126,8 +126,8 @@ counts, formatted dates and disabled flags, and merge in route params or
 translations.
 
 ```ts
-// src/views/DocumentListView/mappers/documentListViewMapper.ts
-import type { DocumentModel, ListDocumentsResponseModel } from '@/domains/document'
+// src/views/DocumentListView/mappers/documentListToViewModel.ts
+import type { DocumentModel, ListDocumentsResponseModel } from '@/core/domains/document'
 
 import { ERROR_MESSAGES } from '../constants'
 import {
@@ -138,40 +138,39 @@ import {
   type ViewSectionType,
 } from '../models'
 
-export function toDocumentListViewModel(
-  results: DocumentListResultsModel,
-): DocumentListViewModel {
-  return {
-    documents: toDocumentsSection(results.documents),
-    authors: toAuthorsSection(results.authors),
-  }
-}
+const documentModelToRow = (document: DocumentModel): DocumentRowModel => ({
+  id: document.id,
+  title: document.title,
+  badge: document.status === 'published' ? 'Live' : 'Draft',
+})
 
-function toDocumentsSection(
+const documentsResultToSection = (
   result: PromiseSettledResult<ListDocumentsResponseModel>,
-): ViewSectionType<readonly DocumentRowModel[]> {
+): ViewSectionType<readonly DocumentRowModel[]> => {
   if (result.status === 'rejected') {
     return { status: ViewSectionStatusTypes.Error, message: ERROR_MESSAGES.documents }
   }
 
   return {
     status: ViewSectionStatusTypes.Ok,
-    data: result.value.items.map(toDocumentRow),
+    data: result.value.items.map(documentModelToRow),
   }
 }
 
-function toDocumentRow(document: DocumentModel): DocumentRowModel {
-  return {
-    id: document.id,
-    title: document.title,
-    badge: document.status === 'published' ? 'Live' : 'Draft',
-  }
-}
+export const documentListToViewModel = (
+  results: DocumentListResultsModel,
+): DocumentListViewModel => ({
+  documents: documentsResultToSection(results.documents),
+  authors: authorsResultToSection(results.authors),
+})
 ```
 
 Note the shape of that code: one small named function per section and per row,
-guard clause for the rejected branch, a ternary only for a two-value choice —
-the flat-conditionals policy applied.
+each named for the direction it maps (`<source>To<Target>`, like a domain
+mapper), guard clause for the rejected branch, a ternary only for a two-value
+choice — the flat-conditionals policy applied. The row mapper sits above the
+section mapper which sits above the exported entry point, because `const`
+arrows are not hoisted and the file therefore reads in dependency order.
 
 ## `models/`
 
@@ -224,4 +223,6 @@ test without rendering:
 
 No semicolons, 2-space indent, single quotes, sorted imports, max 2 params
 (bundle mapper inputs into one object — as `DocumentListResultsModel` does).
-Import domains by alias (`@/domains/...`), view internals by relative path.
+Every function is a `const` bound to an arrow function, defined above its first
+use (see the arrow-function-declarations policy).
+Import domains by alias (`@/core/domains/...`), view internals by relative path.

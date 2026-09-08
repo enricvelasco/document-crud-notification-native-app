@@ -80,13 +80,11 @@ export interface SubmitButtonProps {
   onPress: () => void
 }
 
-export function SubmitButton({ label, disabled = false, onPress }: SubmitButtonProps) {
-  return (
-    <Pressable style={styles.root} disabled={disabled} onPress={onPress}>
-      <Text style={styles.label}>{label}</Text>
-    </Pressable>
-  )
-}
+export const SubmitButton = ({ label, disabled = false, onPress }: SubmitButtonProps) => (
+  <Pressable style={styles.root} disabled={disabled} onPress={onPress}>
+    <Text style={styles.label}>{label}</Text>
+  </Pressable>
+)
 ```
 
 ```tsx
@@ -102,7 +100,7 @@ export interface SearchFieldProps {
   onSearch: (query: string) => void
 }
 
-export function SearchField({ onSearch }: SearchFieldProps) {
+export const SearchField = ({ onSearch }: SearchFieldProps) => {
   const { value, canSubmit, handleChange, handleSubmit } = useSearchField(onSearch)
 
   return (
@@ -121,7 +119,7 @@ The hook returns a plain object of values and handlers for `index.tsx` to
 render. It may use its own siblings in `resources/`:
 
 - **`utils.ts`** — pure helpers the hook calls (a debounce wrapper, a validator).
-  Each is a named function; anything worth testing gets a unit test.
+  Each is a named `const` arrow function; anything worth testing gets a unit test.
 - **`constants.ts`** — local constants (debounce ms, min query length).
 - **`services.ts`** — side effects owned by this component that are not a domain
   repository (e.g. firing an analytics event). Cross-cutting services stay in
@@ -134,7 +132,7 @@ import { useState } from 'react'
 import { MIN_QUERY_LENGTH } from './constants'
 import { isSubmittable } from './utils'
 
-export function useSearchField(onSearch: (query: string) => void) {
+export const useSearchField = (onSearch: (query: string) => void) => {
   const [value, setValue] = useState('')
   const canSubmit = isSubmittable(value, MIN_QUERY_LENGTH)
 
@@ -191,7 +189,7 @@ Values that describe the design system (colours, spacing, fonts) come from
 
 ## What a UI component must not do
 
-- Import from `@/domains/...` or `@/views/...` — components receive everything
+- Import from `@/core/domains/...` or `@/views/...` — components receive everything
   via props; data fetching is the view's job.
 - Hold logic inline in `index.tsx` when it is more than a one-liner — move it to
   `resources/use<ComponentName>.ts`.
@@ -201,5 +199,7 @@ Values that describe the design system (colours, spacing, fonts) come from
 ## Style (match the project)
 
 No semicolons, 2-space indent, single quotes, sorted imports, max 2 params
-(bundle extra props by passing the props object). Component folders and names
-are PascalCase; hook files are `use<ComponentName>.ts`.
+(bundle extra props by passing the props object). The component and its hook are
+`const` arrow functions (see the arrow-function-declarations policy) — in a
+`.tsx` file a generic one needs the disambiguating comma, `<T,>`. Component
+folders and names are PascalCase; hook files are `use<ComponentName>.ts`.

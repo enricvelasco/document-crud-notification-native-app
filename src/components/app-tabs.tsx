@@ -3,7 +3,7 @@ import { useColorScheme } from 'react-native'
 
 import { Colors } from '@/constants/theme'
 
-export default function AppTabs() {
+const AppTabs = () => {
   const scheme = useColorScheme()
   const colors = Colors[scheme === 'unspecified' ? 'light' : scheme]
 
@@ -30,3 +30,5 @@ export default function AppTabs() {
     </NativeTabs>
   )
 }
+
+export default AppTabs

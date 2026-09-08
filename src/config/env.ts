@@ -12,7 +12,7 @@ export interface AppConfig {
 
 const DEFAULT_TIMEOUT_MS = 15000
 
-function readAppConfig(): AppConfig {
+const readAppConfig = (): AppConfig => {
   const raw = Constants.expoConfig?.extra?.appConfig as Partial<AppConfig> | undefined
 
   if (raw == null) {

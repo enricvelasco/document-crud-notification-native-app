@@ -45,9 +45,7 @@ export type UserRoleTypes = (typeof UserRoleTypes)[keyof typeof UserRoleTypes]
 Using it reads almost the same as an enum would:
 
 ```ts
-function canPublish(role: UserRoleTypes): boolean {
-  return role === UserRoleTypes.Admin
-}
+const canPublish = (role: UserRoleTypes): boolean => role === UserRoleTypes.Admin
 
 const role: UserRoleTypes = UserRoleTypes.Member
 ```

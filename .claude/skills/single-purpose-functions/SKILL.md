@@ -6,7 +6,8 @@ description: >-
   generic verb (`process`, `handle`, `manage`, `doStuff`), or a boolean flag
   parameter that switches behaviour, the function is doing too much — split it.
   Name says what, not how; verb-first with the project's prefix conventions
-  (`get`/`to`/`is`/`has`/`handle`/`use`/`create`). Use this skill whenever you
+  (`get`/`is`/`has`/`handle`/`use`/`create`), and mappers named for their
+  direction (`documentPayloadToModel`). Use this skill whenever you
   write, name, rename, split or review any function, method, hook, mapper,
   repository or helper, when a function grows past a screenful, or when you catch
   yourself writing a comment to explain what a function does.
@@ -44,11 +45,11 @@ A name fails the test when it contains:
 
 ```ts
 // ❌ name hides two responsibilities
-async function processDocuments(rawList: DocumentPayload[]) { … }
+const processDocuments = async (rawList: DocumentPayloadModel[]) => …
 
 // ✅ each one nameable, each one testable
-function toDocumentModels(payloads: readonly DocumentPayload[]): readonly DocumentModel[]
-function filterPublished(documents: readonly DocumentModel[]): readonly DocumentModel[]
+const documentListPayloadToModel = (payloads: DocumentListPayloadType): DocumentListType => …
+const filterPublished = (documents: DocumentListType): DocumentListType => …
 ```
 
 ## The comment test
@@ -60,10 +61,10 @@ explaining *why* something non-obvious was necessary, which a name cannot carry.
 ```ts
 // ❌ the comment is doing the name's job
 // Returns the rows the list should show, dropping archived ones
-function getRows(documents: readonly DocumentModel[]) { … }
+const getRows = (documents: readonly DocumentModel[]) => …
 
 // ✅ the name carries it
-function getVisibleDocumentRows(documents: readonly DocumentModel[]) { … }
+const getVisibleDocumentRows = (documents: readonly DocumentModel[]) => …
 ```
 
 ## Verb prefixes used in this project
@@ -75,7 +76,7 @@ alone — what it returns, whether it is pure, whether it touches I/O.
 | --- | --- | --- |
 | `get` | returns something already available, cheap, sync or a simple lookup | `getVisibleDocumentRows` |
 | `fetch` / `load` | goes to the network or storage, async | `loadDocumentListView` |
-| `to` / `map` | pure shape translation | `toDocumentModel`, `toDocumentListViewModel` |
+| `<source>To<Target>` | pure shape translation, named for its direction | `documentPayloadToModel`, `documentListToViewModel` |
 | `is` / `has` / `can` / `should` | predicate, returns boolean | `isPublished`, `canSubmit` |
 | `create` / `build` | constructs a new value or object | `createDocument`, `buildQueryParams` |
 | `handle` / `on` | event handler in a component or hook | `handleSubmit`, `onPressRow` |
@@ -99,13 +100,13 @@ alone — what it returns, whether it is pure, whether it touches I/O.
 
 ```ts
 // ❌ flag parameter switches behaviour
-function saveDocument(document: DocumentModel, publish: boolean) {
+const saveDocument = (document: DocumentModel, publish: boolean) => {
   if (publish) { … } else { … }
 }
 
 // ✅ two intentions, two names, two tests
-function publishDocument(document: DocumentModel): Promise<DocumentModel>
-function saveDraftDocument(document: DocumentModel): Promise<DocumentModel>
+const publishDocument = (document: DocumentModel): Promise<DocumentModel> => …
+const saveDraftDocument = (document: DocumentModel): Promise<DocumentModel> => …
 ```
 
 ## Why this matters here
@@ -131,7 +132,7 @@ summary of them. The orchestrator keeps the name of the overall intent.
 
 ```ts
 // before: one function, three jobs, needs a comment to follow
-async function loadDocumentListView() {
+const loadDocumentListView = async () => {
   const [documents, authors] = await Promise.allSettled([listDocuments(), listAuthors()])
   const rows = documents.status === 'fulfilled'
     ? documents.value.items.map((d) => ({ id: d.id, title: d.title, badge: d.status === 'published' ? 'Live' : 'Draft' }))
@@ -140,21 +141,27 @@ async function loadDocumentListView() {
 }
 
 // after: the loader orchestrates, each step is named and testable on its own
-export async function loadDocumentListView(): Promise<DocumentListViewModel> {
-  const [documents, authors] = await Promise.allSettled([listDocuments(), listAuthors()])
-  return toDocumentListViewModel({ documents, authors })
-}
+const documentStatusToBadge = (status: DocumentStatusTypes): string => …
+const documentModelToRow = (document: DocumentModel): DocumentRowModel => …
+const documentsResultToSection = (result: PromiseSettledResult<ListDocumentsResponseModel>) => …
+const documentListToViewModel = (results: DocumentListResultsModel): DocumentListViewModel => …
 
-function toDocumentsSection(result: PromiseSettledResult<ListDocumentsResponseModel>) { … }
-function toDocumentRow(document: DocumentModel): DocumentRowModel { … }
-function toDocumentBadge(status: DocumentStatusTypes): string { … }
+export const loadDocumentListView = async (): Promise<DocumentListViewModel> => {
+  const [documents, authors] = await Promise.allSettled([listDocuments(), listAuthors()])
+
+  return documentListToViewModel({ documents, authors })
+}
 ```
 
 Notice the outer function got *shorter and clearer*, not longer. That is the
 tell that the split was the right one — if extracting made the caller harder to
-read, you split along the wrong seam.
+read, you split along the wrong seam. Note also that the extracted steps sit
+*above* the orchestrator: `const` arrows are not hoisted, so a split file reads
+smallest-piece-first and the orchestrator lands last, as a summary of what
+precedes it.
 
 ## Style (match the project)
 
 No semicolons, 2-space indent, single quotes, camelCase function names
-(PascalCase only for components), max 2 parameters.
+(PascalCase only for components), max 2 parameters. Every function is a `const`
+bound to an arrow function (see the arrow-function-declarations policy).
