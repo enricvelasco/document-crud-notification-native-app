@@ -6,8 +6,9 @@ description: >-
   notifications, storage, analytics, dates, logging, i18n…) is wrapped in a
   project-owned port under `src/services/<capability>/`, where a single adapter
   file is the only place that imports the library, and library types never leak
-  into our models. Consumers import the port and receive it by injection so tests
-  need no module mocking. Use this skill whenever you add or upgrade an npm
+  into our models. Consumers import the port — never take it as a parameter,
+  which is reserved for dynamic inputs — and a test mocks that one module we own
+  instead of the library. Use this skill whenever you add or upgrade an npm
   package, call a third-party SDK, write an `import` from a library into a
   domain/view/screen/component, set up http, notifications, storage or
   analytics, or make code testable that currently reaches out to a library.
@@ -72,11 +73,16 @@ export interface ScheduledNotificationModel {
 }
 
 export interface NotificationServiceModel {
-  requestPermission(): Promise<NotificationPermissionTypes>
-  schedule(notification: ScheduledNotificationModel): Promise<string>
-  cancel(notificationId: string): Promise<void>
+  requestPermission: () => Promise<NotificationPermissionTypes>
+  schedule: (notification: ScheduledNotificationModel) => Promise<string>
+  cancel: (notificationId: string) => Promise<void>
 }
 ```
+
+Declare the members as **property signatures** (`name: (args) => Ret`), not
+method signatures (`name(args): Ret`). TypeScript checks method parameters
+bivariantly and property parameters contravariantly, so the property form
+actually catches an adapter whose argument types drift from the port.
 
 ### 2. One adapter, one library import
 
@@ -95,30 +101,34 @@ import {
   type ScheduledNotificationModel,
 } from '../models'
 
-export const expoNotificationsAdapter: NotificationServiceModel = {
-  async requestPermission(): Promise<NotificationPermissionTypes> {
-    const { status } = await Notifications.requestPermissionsAsync()
-    return toPermissionType(status)
-  },
-
-  async schedule(notification: ScheduledNotificationModel): Promise<string> {
-    return Notifications.scheduleNotificationAsync({
-      content: { title: notification.title, body: notification.body },
-      trigger: { date: new Date(notification.triggerAt) },
-    })
-  },
-
-  async cancel(notificationId: string): Promise<void> {
-    await Notifications.cancelScheduledNotificationAsync(notificationId)
-  },
-}
-
-function toPermissionType(status: string): NotificationPermissionTypes {
+const toPermissionType = (status: string): NotificationPermissionTypes => {
   if (status === 'granted') return PermissionTypes.Granted
   if (status === 'denied') return PermissionTypes.Denied
   return PermissionTypes.Undetermined
 }
+
+export const expoNotificationsAdapter: NotificationServiceModel = {
+  requestPermission: async (): Promise<NotificationPermissionTypes> => {
+    const { status } = await Notifications.requestPermissionsAsync()
+
+    return toPermissionType(status)
+  },
+
+  schedule: (notification: ScheduledNotificationModel): Promise<string> =>
+    Notifications.scheduleNotificationAsync({
+      content: { title: notification.title, body: notification.body },
+      trigger: { date: new Date(notification.triggerAt) },
+    }),
+
+  cancel: async (notificationId: string): Promise<void> => {
+    await Notifications.cancelScheduledNotificationAsync(notificationId)
+  },
+}
 ```
+
+Note that `toPermissionType` sits **above** the object that uses it. Arrow
+consts are not hoisted, so an adapter reads bottom-up: translation helpers
+first, then the object that assembles them.
 
 ### 3. The port picks the adapter
 
@@ -132,32 +142,47 @@ Everything else imports `@/services/notifications` and sees only our interface.
 Swapping `expo-notifications` for something else changes this one line and one
 adapter file.
 
-## Injection where it matters
+## Consumers import the port
 
-Importing the port directly is fine for most call sites. Where a unit test needs
-to control the dependency, take it as a parameter instead — then the test passes
-a plain object and no module mocking is involved.
+A consumer imports the port and calls it. **The service does not travel through
+the signature** — parameters are for the caller's dynamic inputs (an id, a
+query, url or body params), and which implementation the app speaks through is
+not the caller's decision. Threading a service through every signature spreads a
+dependency that the port exists precisely to contain.
 
 ```ts
-// src/domains/reminder/repositories/scheduleReminder.ts
-import type { NotificationServiceModel } from '@/services/notifications'
+// src/core/domains/reminder/repositories/scheduleReminder.ts
+import { notificationService } from '@/services/notifications'
 
-export function createScheduleReminder(service: NotificationServiceModel) {
-  return (reminder: ReminderModel): Promise<string> =>
-    service.schedule(toScheduledNotification(reminder))
+import { reminderModelToScheduledNotification } from '../mappers/reminderModelToScheduledNotification'
+import { ReminderError, type ScheduleReminderType } from '../models'
+
+export const scheduleReminder: ScheduleReminderType = async (reminder) => {
+  try {
+    return await notificationService.schedule(reminderModelToScheduledNotification(reminder))
+  } catch (error) {
+    throw new ReminderError('The reminder could not be scheduled.', { cause: error })
+  }
 }
 ```
 
-```ts
-// in the test — no jest.mock, no native module shims
-const fakeService: NotificationServiceModel = {
-  requestPermission: async () => NotificationPermissionTypes.Granted,
-  schedule: async () => 'notification-id',
-  cancel: async () => undefined,
-}
+A test controls the dependency by mocking the port module — one line, and the
+real adapter (plus the native module and app config behind it) never loads:
 
-const scheduleReminder = createScheduleReminder(fakeService)
+```ts
+// in the test — the port is mocked, not the library
+jest.mock('@/services/notifications', () => ({
+  notificationService: { schedule: jest.fn() },
+}))
+
+const scheduleMock = notificationService.schedule as jest.Mock
 ```
+
+This is still the payoff of the port: the test mocks **one module we own** with
+a shape we defined, instead of intercepting `expo-notifications`, shimming
+native modules, and coupling the test to the library's internals. Taking the
+service as a parameter is reserved for the rare helper that genuinely has to run
+against two different implementations in the same process.
 
 ## Never leak library types
 
@@ -223,5 +248,7 @@ impossible to cross by accident rather than a convention people remember.
 ## Style (match the project)
 
 No semicolons, 2-space indent, single quotes, sorted imports, max 2 params.
-Interfaces use the `Model` suffix, enumerations the `as const` + `Types` pattern
-(see the no-typescript-enum policy), files camelCase.
+Every function is a `const` bound to an arrow function and object members are
+arrow properties, never method shorthand (see the arrow-function-declarations
+policy). Interfaces use the `Model` suffix, enumerations the `as const` +
+`Types` pattern (see the no-typescript-enum policy), files camelCase.

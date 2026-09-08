@@ -32,7 +32,7 @@ interface EnvIdentity {
   bundleId: string
 }
 
-function resolveAppEnv(raw: string | null | undefined): AppEnv {
+const resolveAppEnv = (raw: string | null | undefined): AppEnv => {
   if (raw == null || raw === '') {
     return DEFAULT_APP_ENV
   }
@@ -44,7 +44,7 @@ function resolveAppEnv(raw: string | null | undefined): AppEnv {
   return raw as AppEnv
 }
 
-function parseEnvFile(contents: string): EnvVars {
+const parseEnvFile = (contents: string): EnvVars => {
   const vars: EnvVars = {}
   for (const rawLine of contents.split('\n')) {
     const line = rawLine.trim()
@@ -69,19 +69,19 @@ function parseEnvFile(contents: string): EnvVars {
   return vars
 }
 
-function readEnvFile(projectRoot: string, fileName: string): EnvVars {
+const readEnvFile = (projectRoot: string, fileName: string): EnvVars => {
   const path = join(projectRoot, ENV_DIR, fileName)
   return existsSync(path) ? parseEnvFile(readFileSync(path, 'utf8')) : {}
 }
 
-function loadEnvVars(projectRoot: string, appEnv: AppEnv): EnvVars {
+const loadEnvVars = (projectRoot: string, appEnv: AppEnv): EnvVars => {
   return {
     ...readEnvFile(projectRoot, `${appEnv}.env`),
     ...readEnvFile(projectRoot, `${appEnv}.env.local`),
   }
 }
 
-function buildRuntimeConfig(appEnv: AppEnv, vars: EnvVars): AppRuntimeConfig {
+const buildRuntimeConfig = (appEnv: AppEnv, vars: EnvVars): AppRuntimeConfig => {
   const need = (key: string): string => {
     const value = vars[key]
     if (value == null || value === '') {
@@ -104,7 +104,7 @@ function buildRuntimeConfig(appEnv: AppEnv, vars: EnvVars): AppRuntimeConfig {
   }
 }
 
-function identityFor(appEnv: AppEnv): EnvIdentity {
+const identityFor = (appEnv: AppEnv): EnvIdentity => {
   if (appEnv === 'prod') {
     return { nameSuffix: '', scheme: BASE_SCHEME, bundleId: BASE_ID }
   }

@@ -23,7 +23,7 @@ domains and mapped everything into final render shape, so the screen **paints
 and nothing else** — no mapping, no reshaping, no deriving labels.
 
 Layering: `src/app/` route → `<Entity><Purpose>Screen` (paints) →
-`<Entity><Purpose>View` (loads + maps) → `@/domains/*`.
+`<Entity><Purpose>View` (loads + maps) → `@/core/domains/*`.
 
 ## Folder layout
 
@@ -69,7 +69,7 @@ import { useEffect, useState } from 'react'
 
 import { type DocumentListViewModel, loadDocumentListView } from '@/views/DocumentListView'
 
-export function useDocumentListScreen() {
+export const useDocumentListScreen = () => {
   const [viewModel, setViewModel] = useState<DocumentListViewModel | null>(null)
 
   useEffect(() => {
@@ -105,7 +105,7 @@ import { AuthorFilters } from './components/AuthorFilters'
 import { useDocumentListScreen } from './resources/useDocumentListScreen'
 import { styles } from './styles'
 
-export function DocumentListScreen() {
+export const DocumentListScreen = () => {
   const { viewModel, isLoading } = useDocumentListScreen()
 
   if (isLoading) return <Spinner />
@@ -153,7 +153,7 @@ them.
 - Map or reshape data — the view already delivered final render shape. If you
   are writing `.map()` to change a field name in a screen, it belongs in the
   view's mapper.
-- Import from `@/domains/...` — go through its view.
+- Import from `@/core/domains/...` — go through its view.
 - Invent error copy — the message comes from the view model.
 - Hold logic inline in `index.tsx` beyond a one-liner — move it to
   `resources/use<ScreenName>.ts`.
@@ -161,5 +161,8 @@ them.
 ## Style (match the project)
 
 No semicolons, 2-space indent, single quotes, sorted imports, max 2 params.
-Screen folders, component names and props types are PascalCase
-(`DocumentListScreenProps`); the hook file is `use<ScreenName>.ts`.
+The screen component and its hook are `const` arrow functions like everything
+else (see the arrow-function-declarations policy), and a default-exported screen
+is named first, then exported. Screen folders, component names and props types
+are PascalCase (`DocumentListScreenProps`); the hook file is
+`use<ScreenName>.ts`.

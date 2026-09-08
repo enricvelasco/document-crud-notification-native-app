@@ -20,7 +20,7 @@ import { ExternalLink } from './external-link'
 import { ThemedText } from './themed-text'
 import { ThemedView } from './themed-view'
 
-export default function AppTabs() {
+const AppTabs = () => {
   return (
     <Tabs>
       <TabSlot style={{ height: '100%' }} />
@@ -38,7 +38,7 @@ export default function AppTabs() {
   )
 }
 
-export function TabButton({ children, isFocused, ...props }: TabTriggerSlotProps) {
+export const TabButton = ({ children, isFocused, ...props }: TabTriggerSlotProps) => {
   return (
     <Pressable {...props} style={({ pressed }) => pressed && styles.pressed}>
       <ThemedView
@@ -52,7 +52,7 @@ export function TabButton({ children, isFocused, ...props }: TabTriggerSlotProps
   )
 }
 
-export function CustomTabList(props: TabListProps) {
+export const CustomTabList = (props: TabListProps) => {
   const scheme = useColorScheme()
   const colors = Colors[scheme === 'unspecified' ? 'light' : scheme]
 
@@ -118,3 +118,5 @@ const styles = StyleSheet.create({
     marginLeft: Spacing.three,
   },
 })
+
+export default AppTabs

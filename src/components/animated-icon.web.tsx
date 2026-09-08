@@ -5,7 +5,7 @@ import Animated, { Easing, Keyframe } from 'react-native-reanimated'
 import classes from './animated-icon.module.css'
 const DURATION = 300
 
-export function AnimatedSplashOverlay() {
+export const AnimatedSplashOverlay = () => {
   return null
 }
 
@@ -54,7 +54,7 @@ const glowKeyframe = new Keyframe({
   },
 })
 
-export function AnimatedIcon() {
+export const AnimatedIcon = () => {
   return (
     <View style={styles.iconContainer}>
       <Animated.View entering={glowKeyframe.duration(60 * 1000 * 4)} style={styles.glow}>

@@ -6,11 +6,11 @@ export const DEFAULT_APP_ENV: AppEnv = 'local'
 
 export const APP_ENV_VAR = 'APP_ENV'
 
-export function isAppEnv(value: unknown): value is AppEnv {
+export const isAppEnv = (value: unknown): value is AppEnv => {
   return typeof value === 'string' && (APP_ENVS as readonly string[]).includes(value)
 }
 
-export function resolveAppEnv(raw: string | null | undefined): AppEnv {
+export const resolveAppEnv = (raw: string | null | undefined): AppEnv => {
   if (raw == null || raw === '') {
     return DEFAULT_APP_ENV
   }

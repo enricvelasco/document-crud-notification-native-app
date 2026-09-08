@@ -9,7 +9,7 @@ import { ThemedView } from '@/components/themed-view'
 import { WebBadge } from '@/components/web-badge'
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme'
 
-function getDevMenuHint() {
+const getDevMenuHint = () => {
   if (Platform.OS === 'web') {
     return <ThemedText type="small">use browser devtools</ThemedText>
   }
@@ -28,7 +28,7 @@ function getDevMenuHint() {
   )
 }
 
-export default function HomeScreen() {
+const HomeScreen = () => {
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
@@ -96,3 +96,5 @@ const styles = StyleSheet.create({
     borderRadius: Spacing.four,
   },
 })
+
+export default HomeScreen
