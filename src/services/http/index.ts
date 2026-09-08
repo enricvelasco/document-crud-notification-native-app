@@ -1,4 +1,4 @@
-import { appConfig } from '@/config'
+import { appConfig } from '@config'
 
 import { createFetchHttpAdapter } from './adapters/fetchHttpAdapter'
 

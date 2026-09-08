@@ -1,5 +1,5 @@
-import type { LanguageTypes } from '@/services/language'
-import { type TranslationCatalogModel, type TranslationKeyType, translations } from '@/translations'
+import type { LanguageTypes } from '@services/language'
+import { type TranslationCatalogModel, type TranslationKeyType, translations } from '@translations'
 
 import { createI18nJsTranslateAdapter } from './adapters/i18nJsTranslateAdapter'
 

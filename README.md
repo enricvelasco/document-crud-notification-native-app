@@ -41,6 +41,42 @@ This command will move the starter code to the **app-example** directory and cre
 - If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
 - Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
 
+## Import aliases
+
+Every top-level folder under `src/` (plus `assets/`) is reachable through an
+`@`-prefixed alias, so imports never walk up the tree:
+
+```ts
+import { httpService } from '@services/http'
+import { useTheme } from '@hooks/use-theme'
+import { getDocumentList } from '@core/domains/document'
+```
+
+`compilerOptions.paths` in **tsconfig.json** is the single source of truth.
+Metro reads it directly (Expo's `experiments.tsconfigPaths`, on by default) and
+**jest.config.js** derives its `moduleNameMapper` from it, so an alias is
+declared in exactly one place.
+
+### Adding a new alias
+
+Add the folder to `compilerOptions.paths` in **tsconfig.json**:
+
+```json
+"@utils/*": ["./src/utils/*"]
+```
+
+Add a second, wildcard-free entry only when the folder has a barrel `index.ts`
+you want to import bare — that is why `@config` and `@translations` are listed
+twice:
+
+```json
+"@utils": ["./src/utils"],
+"@utils/*": ["./src/utils/*"]
+```
+
+Restart the Expo CLI afterwards to pick up the change (clearing the Metro cache
+is not needed). Nothing else to touch: TypeScript, Metro and Jest all follow.
+
 ## Learn more
 
 To learn more about developing your project with Expo, look at the following resources:

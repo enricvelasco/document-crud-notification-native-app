@@ -1,4 +1,4 @@
-import { httpService } from '@/services/http'
+import { httpService } from '@services/http'
 
 import { documentListPayloadToModel } from '../mappers/documentListPayloadToModel'
 import { DocumentError, type DocumentListPayloadType, type GetDocumentListType } from '../models'

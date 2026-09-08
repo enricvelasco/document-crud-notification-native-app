@@ -1,6 +1,6 @@
-import type { TranslationKeyType } from '@/translations'
+import type { TranslationKeyType } from '@translations'
 
-import type { TranslateParamsModel } from './translateParamsModel'
+import type { TranslateParamsModel } from '@services/translate'
 
 export type TranslateType = (
   key: TranslationKeyType,

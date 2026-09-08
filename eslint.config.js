@@ -6,6 +6,18 @@ const simpleImportSort = require('eslint-plugin-simple-import-sort')
 const importNewlines = require('eslint-plugin-import-newlines')
 const tseslint = require('@typescript-eslint/eslint-plugin')
 const globals = require('globals')
+const { readImportAliasRoots } = require('./scripts/import-aliases')
+
+// Project import aliases (`@core`, `@hooks`, …) look exactly like scoped npm
+// packages, so simple-import-sort would file them under third-party imports.
+// These patterns are derived from tsconfig.json — the single source of truth —
+// so a newly declared alias is grouped correctly without touching this file.
+const ALIAS_ROOTS = readImportAliasRoots().map((root) => root.slice(1)).join('|')
+// simple-import-sort appends a NUL to type-only imports, so a bare alias root
+// (`@config`, `@translations`) needs it accepted as an end-of-specifier marker.
+const ALIAS_END = '(?:/|\\u0000|$)'
+const ALIAS_IMPORT = `^@(?:${ALIAS_ROOTS})${ALIAS_END}`
+const SCOPED_PACKAGE_IMPORT = `^@(?!(?:${ALIAS_ROOTS})${ALIAS_END})\\w`
 
 module.exports = defineConfig([
   globalIgnores([
@@ -46,7 +58,16 @@ module.exports = defineConfig([
       'max-params': ['error', { max: 2 }],
 
       // --- ordered imports ---
-      'simple-import-sort/imports': 'error',
+      'simple-import-sort/imports': ['error', {
+        groups: [
+          ['^\\u0000'],                        // side effects
+          ['^node:'],                           // node builtins
+          ['^\\w', SCOPED_PACKAGE_IMPORT],       // third-party packages
+          [ALIAS_IMPORT],                       // project aliases
+          ['^'],                                // anything else
+          ['^\\.'],                             // relative
+        ],
+      }],
       'simple-import-sort/exports': 'error',
       'import/order': 'off',
       'sort-imports': 'off',
@@ -146,7 +167,7 @@ module.exports = defineConfig([
     rules: {
       'no-restricted-globals': ['error', {
         name: 'fetch',
-        message: 'Import @/services/http instead — only its adapter may use the transport directly.',
+        message: 'Import @services/http instead — only its adapter may use the transport directly.',
       }],
     },
   },
@@ -162,11 +183,11 @@ module.exports = defineConfig([
         paths: [
           {
             name: 'expo-localization',
-            message: 'Import @/services/language instead — only its adapter may use this library.',
+            message: 'Import @services/language instead — only its adapter may use this library.',
           },
           {
             name: 'i18n-js',
-            message: 'Import @/services/translate instead — only its adapter may use this library.',
+            message: 'Import @services/translate instead — only its adapter may use this library.',
           },
         ],
       }],
@@ -180,7 +201,7 @@ module.exports = defineConfig([
       'no-restricted-imports': ['error', {
         paths: [{
           name: 'i18n-js',
-          message: 'Import @/services/translate instead — only its adapter may use this library.',
+          message: 'Import @services/translate instead — only its adapter may use this library.',
         }],
       }],
     },
@@ -193,7 +214,7 @@ module.exports = defineConfig([
       'no-restricted-imports': ['error', {
         paths: [{
           name: 'expo-localization',
-          message: 'Import @/services/language instead — only its adapter may use this library.',
+          message: 'Import @services/language instead — only its adapter may use this library.',
         }],
       }],
     },
