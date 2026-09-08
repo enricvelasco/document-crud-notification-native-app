@@ -1,0 +1,12 @@
+{
+  "appName": "Documents",
+  "cancel": "Cancel",
+  "retry": "Retry",
+  "loading": "Loading…",
+  "genericError": "Something went wrong.",
+  "languageTitle": "Language",
+  "languageSelected": "Selected language: {{language}}",
+  "documentListTitle": "Documents",
+  "documentListEmpty": "There are no documents yet.",
+  "documentListLoadError": "The documents could not be loaded."
+}

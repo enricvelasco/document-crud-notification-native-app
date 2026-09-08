@@ -1,0 +1,12 @@
+{
+  "appName": "Documents",
+  "cancel": "Cancel·la",
+  "retry": "Torna-ho a provar",
+  "loading": "Carregant…",
+  "genericError": "Alguna cosa ha anat malament.",
+  "languageTitle": "Idioma",
+  "languageSelected": "Idioma seleccionat: {{language}}",
+  "documentListTitle": "Documents",
+  "documentListEmpty": "Encara no hi ha documents.",
+  "documentListLoadError": "No s'han pogut carregar els documents."
+}

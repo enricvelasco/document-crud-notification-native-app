@@ -1,0 +1,12 @@
+{
+  "appName": "Documentos",
+  "cancel": "Cancelar",
+  "retry": "Reintentar",
+  "loading": "Cargando…",
+  "genericError": "Algo ha salido mal.",
+  "languageTitle": "Idioma",
+  "languageSelected": "Idioma seleccionado: {{language}}",
+  "documentListTitle": "Documentos",
+  "documentListEmpty": "Todavía no hay documentos.",
+  "documentListLoadError": "No se han podido cargar los documentos."
+}

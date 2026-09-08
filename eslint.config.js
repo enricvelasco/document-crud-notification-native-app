@@ -152,6 +152,54 @@ module.exports = defineConfig([
   },
 
   {
+    // --- a wrapped library is reachable only through its own port ---
+    // Flat config merges rules by name, so every library lives in this single
+    // `no-restricted-imports` entry; the blocks below re-declare the whole list
+    // minus the one library that adapter is allowed to import.
+    files: ['src/**/*.ts', 'src/**/*.tsx'],
+    rules: {
+      'no-restricted-imports': ['error', {
+        paths: [
+          {
+            name: 'expo-localization',
+            message: 'Import @/services/language instead — only its adapter may use this library.',
+          },
+          {
+            name: 'i18n-js',
+            message: 'Import @/services/translate instead — only its adapter may use this library.',
+          },
+        ],
+      }],
+    },
+  },
+
+  {
+    // --- the language adapter is the one place expo-localization is allowed ---
+    files: ['src/services/language/adapters/**'],
+    rules: {
+      'no-restricted-imports': ['error', {
+        paths: [{
+          name: 'i18n-js',
+          message: 'Import @/services/translate instead — only its adapter may use this library.',
+        }],
+      }],
+    },
+  },
+
+  {
+    // --- the translate adapter is the one place i18n-js is allowed ---
+    files: ['src/services/translate/adapters/**'],
+    rules: {
+      'no-restricted-imports': ['error', {
+        paths: [{
+          name: 'expo-localization',
+          message: 'Import @/services/language instead — only its adapter may use this library.',
+        }],
+      }],
+    },
+  },
+
+  {
     files: ['eslint.config.js', '*.config.js'],
     languageOptions: { globals: globals.node },
   },
