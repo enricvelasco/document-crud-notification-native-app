@@ -21,6 +21,10 @@ expo-env.d.ts
 # Metro
 .metro-health-check*
 
+# Storybook (local-only component docs)
+storybook-static/
+*storybook.log
+
 # debug
 npm-debug.*
 yarn-debug.*
