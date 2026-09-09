@@ -35,6 +35,9 @@
       ],
       "@translations/*": [
         "./src/translations/*"
+      ],
+      "@ui/*": [
+        "./src/ui/*"
       ]
     }
   },

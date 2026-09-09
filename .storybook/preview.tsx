@@ -12,7 +12,7 @@ const preview: Preview = {
 
   parameters: {
     controls: { matchers: { color: /(background|color)$/i } },
-    options: { storySort: { order: ['Overview', 'UI'] } },
+    options: { storySort: { order: ['Overview', 'UI', ['Atoms', ['Icons', ['Gallery', '*']]]] } },
   },
 
   decorators: [

@@ -190,6 +190,10 @@ module.exports = defineConfig([
             name: 'i18n-js',
             message: 'Import @services/translate instead — only its adapter may use this library.',
           },
+          {
+            name: 'react-native-svg',
+            message: 'Import an icon from @ui/atoms/icons instead — only the icons themselves may use this library.',
+          },
         ],
       }],
     },
@@ -200,10 +204,16 @@ module.exports = defineConfig([
     files: ['src/services/language/adapters/**'],
     rules: {
       'no-restricted-imports': ['error', {
-        paths: [{
-          name: 'i18n-js',
-          message: 'Import @services/translate instead — only its adapter may use this library.',
-        }],
+        paths: [
+          {
+            name: 'i18n-js',
+            message: 'Import @services/translate instead — only its adapter may use this library.',
+          },
+          {
+            name: 'react-native-svg',
+            message: 'Import an icon from @ui/atoms/icons instead — only the icons themselves may use this library.',
+          },
+        ],
       }],
     },
   },
@@ -213,10 +223,37 @@ module.exports = defineConfig([
     files: ['src/services/translate/adapters/**'],
     rules: {
       'no-restricted-imports': ['error', {
-        paths: [{
-          name: 'expo-localization',
-          message: 'Import @services/language instead — only its adapter may use this library.',
-        }],
+        paths: [
+          {
+            name: 'expo-localization',
+            message: 'Import @services/language instead — only its adapter may use this library.',
+          },
+          {
+            name: 'react-native-svg',
+            message: 'Import an icon from @ui/atoms/icons instead — only the icons themselves may use this library.',
+          },
+        ],
+      }],
+    },
+  },
+
+  {
+    // --- the icons are the one place react-native-svg is allowed ---
+    // Everything else depends on our own icon components, never on the
+    // renderer behind them.
+    files: ['src/ui/atoms/icons/**'],
+    rules: {
+      'no-restricted-imports': ['error', {
+        paths: [
+          {
+            name: 'expo-localization',
+            message: 'Import @services/language instead — only its adapter may use this library.',
+          },
+          {
+            name: 'i18n-js',
+            message: 'Import @services/translate instead — only its adapter may use this library.',
+          },
+        ],
       }],
     },
   },

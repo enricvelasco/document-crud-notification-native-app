@@ -42,9 +42,19 @@ const toModuleNameMapper = (aliases) => {
   return Object.fromEntries(entries)
 }
 
+// Stylesheets are a bundler concern. `@constants/theme` side-effect-imports
+// `src/global.css`, so Jest needs it stubbed to reach anything that reads the
+// theme.
+const STYLESHEET_MODULE_MAPPING = {
+  '\\.(css)$': '<rootDir>/scripts/jest/cssStub.js',
+}
+
 module.exports = {
   preset: 'jest-expo',
-  moduleNameMapper: toModuleNameMapper(readImportAliases()),
+  moduleNameMapper: {
+    ...STYLESHEET_MODULE_MAPPING,
+    ...toModuleNameMapper(readImportAliases()),
+  },
   transformIgnorePatterns: [
     'node_modules/(?!((jest-)?react-native|@react-native(-community)?)|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@sentry/react-native|native-base|react-native-svg)',
   ],
