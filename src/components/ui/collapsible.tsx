@@ -8,7 +8,15 @@ import { ThemedView } from '@components/themed-view'
 import { Spacing } from '@constants/theme'
 import { useTheme } from '@hooks/use-theme'
 
-export const Collapsible = ({ children, title }: PropsWithChildren & { title: string }) => {
+export type CollapsibleProps = PropsWithChildren & {
+  /** Label rendered next to the chevron, always visible. */
+  title: string
+}
+
+/**
+ * A disclosure row: press the title to reveal or hide its children.
+ */
+export const Collapsible = ({ children, title }: CollapsibleProps) => {
   const [isOpen, setIsOpen] = useState(false)
   const theme = useTheme()
 

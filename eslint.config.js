@@ -23,6 +23,7 @@ module.exports = defineConfig([
   globalIgnores([
     'dist/*',
     '.expo/*',
+    'storybook-static/*',
     'node_modules/*',
     'android/*',
     'ios/*',
@@ -217,6 +218,35 @@ module.exports = defineConfig([
           message: 'Import @services/language instead — only its adapter may use this library.',
         }],
       }],
+    },
+  },
+
+  {
+    // --- Storybook: decorators and render functions receive components ---
+    // A component is PascalCase by convention, and it arrives as a parameter
+    // (`(Story) => <Story />`), which the camelCase parameter rule rejects.
+    files: ['.storybook/**/*.ts', '.storybook/**/*.tsx', 'src/**/*.stories.tsx'],
+    rules: {
+      '@typescript-eslint/naming-convention': [
+        'error',
+        {
+          selector: 'parameter',
+          format: ['camelCase', 'PascalCase'],
+          leadingUnderscore: 'allow',
+        },
+        {
+          selector: 'typeLike',
+          format: ['PascalCase'],
+        },
+        {
+          selector: 'import',
+          format: null,
+        },
+        {
+          selector: ['objectLiteralProperty', 'typeProperty'],
+          format: null,
+        },
+      ],
     },
   },
 
