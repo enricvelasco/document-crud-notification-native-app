@@ -1,5 +1,5 @@
 /**
- * Below are the colors that are used in the app. The colors are defined in the light and dark mode.
+ * The app color palette. Each block is a role and holds its three options.
  * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
  */
 
@@ -8,23 +8,30 @@ import '../global.css'
 import { Platform } from 'react-native'
 
 export const Colors = {
-  light: {
-    text: '#000000',
-    background: '#ffffff',
-    backgroundElement: '#F0F0F3',
-    backgroundSelected: '#E0E1E6',
-    textSecondary: '#60646C',
+  primary: {
+    default: '#3C87F7',
+    light: '#D8E7FE',
+    dark: '#1C5FC4',
   },
-  dark: {
-    text: '#ffffff',
-    background: '#000000',
-    backgroundElement: '#212225',
-    backgroundSelected: '#2E3135',
-    textSecondary: '#B0B4BA',
+  border: {
+    default: '#D8D9E0',
+    light: '#EDEEF0',
+    dark: '#B9BBC6',
+  },
+  background: {
+    default: '#FFFFFF',
+    light: '#F0F0F3',
+    dark: '#E0E1E6',
+  },
+  text: {
+    default: '#11181C',
+    light: '#60646C',
+    dark: '#000000',
   },
 } as const
 
-export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark
+export type ThemeColor = keyof typeof Colors
+export type ThemeColorVariant = keyof (typeof Colors)[ThemeColor]
 
 export const Fonts = Platform.select({
   ios: {

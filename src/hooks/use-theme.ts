@@ -1,14 +1,8 @@
 /**
- * Learn more about light and dark modes:
- * https://docs.expo.dev/guides/color-schemes/
+ * Access to the app color palette.
+ * Kept as a hook so a future theme source can replace the constant without touching consumers.
  */
 
 import { Colors } from '@constants/theme'
-import { useColorScheme } from '@hooks/use-color-scheme'
 
-export const useTheme = () => {
-  const scheme = useColorScheme()
-  const theme = scheme === 'unspecified' ? 'light' : scheme
-
-  return Colors[theme]
-}
+export const useTheme = () => Colors
