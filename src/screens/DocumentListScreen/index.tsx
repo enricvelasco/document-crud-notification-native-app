@@ -13,7 +13,7 @@ export const DocumentListScreen = () => {
     <SafeAreaView style={styles.root}>
       <View style={styles.content}>
         <Text style={styles.title}>List</Text>
-        <PrimaryButton label="open bottom sheed" onPress={handleOpenBottomSheet} />
+        <PrimaryButton label="open bottom sheet" onPress={handleOpenBottomSheet} />
       </View>
     </SafeAreaView>
   )
