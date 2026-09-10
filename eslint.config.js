@@ -183,6 +183,33 @@ module.exports = defineConfig([
       'no-restricted-imports': ['error', {
         paths: [
           {
+            name: 'expo-document-picker',
+            message: 'Import @services/documentPicker instead — only its adapter may use this library.',
+          },
+          {
+            name: 'expo-localization',
+            message: 'Import @services/language instead — only its adapter may use this library.',
+          },
+          {
+            name: 'i18n-js',
+            message: 'Import @services/translate instead — only its adapter may use this library.',
+          },
+          {
+            name: 'react-native-svg',
+            message: 'Import an icon from @ui/atoms/icons instead — only the icons themselves may use this library.',
+          },
+        ],
+      }],
+    },
+  },
+
+  {
+    // --- the document picker adapter is the one place expo-document-picker is allowed ---
+    files: ['src/services/documentPicker/adapters/**'],
+    rules: {
+      'no-restricted-imports': ['error', {
+        paths: [
+          {
             name: 'expo-localization',
             message: 'Import @services/language instead — only its adapter may use this library.',
           },
@@ -225,6 +252,10 @@ module.exports = defineConfig([
       'no-restricted-imports': ['error', {
         paths: [
           {
+            name: 'expo-document-picker',
+            message: 'Import @services/documentPicker instead — only its adapter may use this library.',
+          },
+          {
             name: 'expo-localization',
             message: 'Import @services/language instead — only its adapter may use this library.',
           },
@@ -245,6 +276,10 @@ module.exports = defineConfig([
     rules: {
       'no-restricted-imports': ['error', {
         paths: [
+          {
+            name: 'expo-document-picker',
+            message: 'Import @services/documentPicker instead — only its adapter may use this library.',
+          },
           {
             name: 'expo-localization',
             message: 'Import @services/language instead — only its adapter may use this library.',
