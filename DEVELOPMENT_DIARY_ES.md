@@ -371,3 +371,146 @@ a más reciente.
   ambas.
 
 ---
+
+## Envolver `FlatList` tras un `List` que solo sabe cuántas columnas hay
+`2026-09-10` · `src/ui/molecules/List/`
+
+> Un listado y un grid son la misma colección vista dos veces, así que no
+> deberían ser dos componentes.
+
+- El listado de documentos se pinta o como filas `CardListItem` apiladas o como
+  celdas `CardGridItem` en mosaico, y el usuario alterna entre ambas a voluntad.
+- `List` recibe `items`, `renderItem`, `keyExtractor` y un único mando de
+  layout: `columns`. Una columna es un listado, dos son un grid, y el cambio es
+  un número en vez de un segundo componente o una bifurcación en quien llama.
+- Es el único fichero de la app que importa `FlatList`, así que la
+  virtualización viene activada por defecto en todas partes en lugar de ser algo
+  que cada llamada recuerda, y la API de listas de React Native no llega nunca a
+  un template ni a una screen.
+- El `gap` se aplica igual entre filas y entre columnas, y `empty` se pinta en
+  el espacio que habrían ocupado las filas: las dos cosas que si no iba a
+  volver a deducir cada llamada.
+- **Descartado** — un wrapper de `View` que mapee children con un gap: más
+  simple de escribir, pero renderiza todos los documentos de golpe y traslada
+  la cuenta de las dos columnas a `flexWrap` en cada punto de uso.
+- **Descartado** — llamar a `FlatList` directamente desde el template: un
+  fichero menos, pero `columnWrapperStyle`, `contentContainerStyle` y la regla
+  de remontaje de `numColumns` se reescriben luego en quien pinte la siguiente
+  colección.
+- **Coste** — `columns` está tipado como número, así que `columns={7}` compila;
+  el componente no acota nada y se fía de quien llama.
+
+---
+
+## Añadir los templates como quinta capa, y que sean dueños de sus textos
+`2026-09-10` · `src/ui/templates/`
+
+> Una screen debería decir qué página es, no cómo se monta esa página.
+
+- `DocumentListScreen` estaba a punto de criar una cabecera, una toolbar, un
+  cuerpo y un pie: layout que pertenece al sistema de diseño, no a la ruta.
+- `src/ui/templates/` continúa la escalera de atomic design que la carpeta `ui`
+  ya sube, y `DocumentListTemplate` es dueño de la página entera, safe area
+  incluida. La screen se reduce a cableado: estado dentro, handlers fuera.
+- Los átomos y las moléculas siguen recibiendo strings planos, que es lo que
+  los hace reutilizables. El template se renderiza exactamente una vez, así que
+  lee sus propios textos con `useTranslate` en lugar de obligar a la screen a
+  hacer de correa de transmisión de nueve de ellos.
+- El texto que no es de la página sigue llegando de fuera: el mensaje de error
+  es una prop, porque quien cargó los documentos sabe qué ha fallado y el
+  template no.
+- **Descartado** — componer la página dentro de la screen: el layout queda
+  entonces inalcanzable desde Storybook, y cada estado hay que producirlo desde
+  la app para poder mirarlo.
+- **Descartado** — un template que reciba cada texto como prop: mantiene la
+  capa perfectamente pura, pero la screen se convierte en un relé de strings
+  estáticos y los textos de una página acaban partidos entre dos capas.
+- **Coste** — la capa `ui` depende ahora de `@hooks/useTranslate`, así que un
+  template no se puede renderizar sin el catálogo de traducciones detrás.
+
+---
+
+## Un template con estado discriminado, no un template por estado
+`2026-09-10` · `src/ui/templates/DocumentListTemplate/`
+
+> Loading, error y contenido se diferencian en un bloque; los otros tres son
+> idénticos en los tres casos.
+
+- La página tiene tres estados, y la cabecera, la toolbar y el botón de añadir
+  son los mismos en todos. Tres templates duplicarían ese cromo tres veces y
+  cobrarían tres veces por un cambio de cabecera.
+- Los estados llegan como un único `DocumentListStateModel` discriminado
+  (`loading` | `error` | `content`), y `DocumentListBody` intercambia solo el
+  bloque entre la toolbar y el pie, con una guard clause por estado y sin
+  anidar.
+- Una lista vacía es `content` sin documentos, no un cuarto estado: la propia
+  lista pinta el mensaje de vacío, así que el template no tiene que preguntar
+  nunca cuántos documentos hay.
+- El orden y el layout son asimétricos a propósito. El orden reordena los
+  documentos, que el template no posee, así que se controla desde fuera. El
+  layout no cambia nada más allá de esta página, así que el template lo guarda
+  en su propio hook e `initialLayout` solo dice por dónde empieza.
+- **Descartado** — tres templates, uno por estado: cada uno se lee más plano
+  por separado, pero la screen vuelve a decidir cuál monta y el cromo
+  compartido necesita igualmente un cuarto componente.
+- **Descartado** — un template con un slot `children`: flexibilidad máxima, y
+  renuncia a la única garantía para la que sirve un template — que cada estado
+  de esta página se vea como se diseñó.
+- **Coste** — añadir un estado obliga a tocar la unión, el cuerpo y las
+  stories a la vez; el compilador lo fuerza, pero son tres ficheros en lugar de
+  uno.
+
+---
+
+## Nombrar las claves de traducción para que no se lean como un string suelto
+`2026-09-10` · `src/translations/`
+
+> En el punto de uso, `translate('documentListAdd')` y una etiqueta hardcodeada
+> se parecen exactamente igual.
+
+- El catálogo usaba claves en camelCase, que se leen como cualquier otro
+  identificador: y lo único con lo que una clave no se puede confundir nunca es
+  con el literal al que sustituye.
+- Ahora las claves son `_SCREAMING_SNAKE` con guion bajo inicial, con el ámbito
+  de quien es dueño del texto: `_DOCUMENT_LIST_TEMPLATE_TITLE`,
+  `_DOCUMENT_LIST_TEMPLATE_ADD`. Los textos compartidos por toda la app se
+  quedan sin ámbito — `_LOADING`, `_CANCEL`, `_RETRY`.
+- El prefijo lleva implícita una reclamación de propiedad: borrar
+  `DocumentListTemplate` señala qué claves se mueren con él, sin tener que
+  buscar los textos uno a uno.
+- **Descartado** — un mapa de constantes generado
+  (`TranslationKeys.documentListAdd`): da autocompletado, pero
+  `TranslationsModel = typeof en` ya tipa cada clave contra el catálogo inglés,
+  así que sería un segundo fichero que mantener al día sin ganar seguridad.
+- **Coste** — las claves son largas y los catálogos se leen con más ruido;
+  renombrar un componente obliga a renombrar sus claves en tres ficheros a la
+  vez.
+
+---
+
+## Todo color sale del theme, y cada superficie declara el suyo
+`2026-09-10` · `src/constants/theme.ts` · `src/ui/`
+
+> Un código hexadecimal dentro de un componente es un color que ningún otro
+> componente puede encontrar.
+
+- `Colors`, en `src/constants/theme.ts`, es la única fuente de color de la app.
+  Ningún componente escribe `#FFFFFF`, `'white'` ni un `rgba()`: pide el rol
+  que quiere decir — `background.default`, `text.light`, `border.dark`.
+- El significado lo llevan los roles, así que repintar es una edición en un
+  fichero en vez de una búsqueda de hexadecimales que se han ido separando
+  entre sí en una docena de componentes.
+- Las superficies se pintan explícitamente, no se heredan.
+  `DocumentListTemplate` da un fondo propio a su cabecera, a su cuerpo y a su
+  pie, incluso donde hoy dos coinciden, porque una página que depende del color
+  de su padre se rompe en silencio en cuanto se monta en otro sitio — y en un
+  template ese padre es la safe area, cuyos insets enseñarían si no el color
+  equivocado por encima de la cabecera.
+- **Descartado** — un hexadecimal en línea «solo por esta vez»: es exactamente
+  así como se escriben la segunda y la tercera copia, y ninguna se mueve cuando
+  se mueve la paleta.
+- **Coste** — la paleta es un conjunto plano de roles con tres variantes cada
+  uno, así que un color que no encaje en ningún rol existente tiene que
+  ganarse uno nuevo en vez de escribirse donde hace falta.
+
+---

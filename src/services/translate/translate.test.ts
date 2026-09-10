@@ -19,23 +19,23 @@ beforeEach(() => {
 
 describe('createI18nJsTranslateAdapter', () => {
   it('translates a key in the current language', () => {
-    expect(translateService.translate('retry')).toBe('Retry')
+    expect(translateService.translate('_RETRY')).toBe('Retry')
   })
 
   it('follows the language reported by the language service', () => {
     currentLanguage = 'es'
 
-    expect(translateService.translate('retry')).toBe('Reintentar')
+    expect(translateService.translate('_RETRY')).toBe('Reintentar')
   })
 
   it('translates to catalan', () => {
     currentLanguage = 'ca'
 
-    expect(translateService.translate('cancel')).toBe('Cancel·la')
+    expect(translateService.translate('_CANCEL')).toBe('Cancel·la')
   })
 
   it('interpolates the params into the translation', () => {
-    expect(translateService.translate('languageSelected', { language: 'Català' })).toBe(
+    expect(translateService.translate('_LANGUAGE_SELECTED', { language: 'Català' })).toBe(
       'Selected language: Català',
     )
   })
@@ -43,14 +43,14 @@ describe('createI18nJsTranslateAdapter', () => {
   it('interpolates the params in every language', () => {
     currentLanguage = 'ca'
 
-    expect(translateService.translate('languageSelected', { language: 'Català' })).toBe(
+    expect(translateService.translate('_LANGUAGE_SELECTED', { language: 'Català' })).toBe(
       'Idioma seleccionat: Català',
     )
   })
 
   it('falls back to the default language when the key is missing in the current one', () => {
     const partialTranslations = {
-      en: { retry: 'Retry' },
+      en: { _RETRY: 'Retry' },
       es: {},
       ca: {},
     } as unknown as TranslationCatalogModel
@@ -60,7 +60,7 @@ describe('createI18nJsTranslateAdapter', () => {
       fallbackLanguage: FALLBACK_LANGUAGE,
     })
 
-    expect(service.translate('retry')).toBe('Retry')
+    expect(service.translate('_RETRY')).toBe('Retry')
   })
 
   it('returns a visible marker for an unknown key', () => {

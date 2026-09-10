@@ -1,20 +1,23 @@
-import { Text, View } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
-
-import { PrimaryButton } from '@ui/atoms/PrimaryButton'
+import { DocumentListTemplate } from '@ui/templates/DocumentListTemplate'
 
 import { useDocumentListScreen } from './resources/useDocumentListScreen'
-import { styles } from './styles'
 
 export const DocumentListScreen = () => {
-  const { handleOpenBottomSheet } = useDocumentListScreen()
+  const {
+    state,
+    sort,
+    handleSortChange,
+    handleAddDocument,
+    handleOpenNotifications,
+  } = useDocumentListScreen()
 
   return (
-    <SafeAreaView style={styles.root}>
-      <View style={styles.content}>
-        <Text style={styles.title}>List</Text>
-        <PrimaryButton label="open bottom sheet" onPress={handleOpenBottomSheet} />
-      </View>
-    </SafeAreaView>
+    <DocumentListTemplate
+      state={state}
+      sort={sort}
+      onSortChange={handleSortChange}
+      onAddDocument={handleAddDocument}
+      onOpenNotifications={handleOpenNotifications}
+    />
   )
 }

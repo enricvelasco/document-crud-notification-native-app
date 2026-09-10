@@ -350,3 +350,136 @@ alternative it beat and what it cost. Ordered oldest first.
   that was asked for by name; the trade-off between the two was never weighed.
 
 ---
+
+## Wrap `FlatList` behind a `List` that only knows how many columns
+`2026-09-10` · `src/ui/molecules/List/`
+
+> A list and a grid are the same collection seen twice, so they should not be
+> two components.
+
+- The document list is painted either as stacked `CardListItem` rows or as
+  tiled `CardGridItem` cells, and the user flips between them at will.
+- `List` takes `items`, `renderItem`, `keyExtractor`, and one layout knob:
+  `columns`. One column is a list, two is a grid, and the switch is a number
+  rather than a second component or a branch in the caller.
+- It is the only file in the app that imports `FlatList`, so virtualisation is
+  on by default everywhere instead of being something each caller remembers,
+  and the React Native list API never reaches a template or a screen.
+- `gap` applies between rows and between columns alike, and `empty` is painted
+  in the space the rows would have taken — the two things every caller was
+  otherwise going to re-derive.
+- **Rejected** — a plain `View` wrapper that maps children with a gap: simpler
+  to write, but it renders every document at once and pushes the two-column
+  maths onto `flexWrap` at each call site.
+- **Rejected** — calling `FlatList` directly from the template: one less file,
+  but `columnWrapperStyle`, `contentContainerStyle` and the `numColumns`
+  remount rule then get rewritten by whoever paints the next collection.
+- **Cost** — `columns` is typed as a number, so `columns={7}` type-checks;
+  the component clamps nothing and trusts the caller.
+
+---
+
+## Add templates as the fifth layer, and let them own their copy
+`2026-09-10` · `src/ui/templates/`
+
+> A screen should say which page it is, not how that page is assembled.
+
+- `DocumentListScreen` was about to grow a header, a toolbar, a body and a
+  footer — layout that belongs to the design system, not to the route.
+- `src/ui/templates/` continues the atomic-design ladder the `ui` folder
+  already climbs, and `DocumentListTemplate` owns the whole page, safe area
+  included. The screen shrinks to wiring: state in, handlers out.
+- Atoms and molecules keep taking plain strings — that is what makes them
+  reusable. The template is rendered exactly once, so it reads its own labels
+  through `useTranslate` instead of making the screen relay nine of them.
+- Text that is not the page's own still arrives from outside: the error message
+  is a prop, because whoever loaded the documents knows what went wrong and the
+  template does not.
+- **Rejected** — composing the page inside the screen: the layout is then
+  unreachable from Storybook, and every state has to be produced by the app to
+  be looked at.
+- **Rejected** — a template that takes every label as a prop: it keeps the
+  layer perfectly pure, but the screen becomes a relay of static strings and
+  the copy for one page ends up split across two layers.
+- **Cost** — the `ui` layer now depends on `@hooks/useTranslate`, so a template
+  cannot be rendered without the translation catalogue behind it.
+
+---
+
+## One template with a discriminated state, not one template per state
+`2026-09-10` · `src/ui/templates/DocumentListTemplate/`
+
+> Loading, error and content differ in one block; the other three are identical
+> in all of them.
+
+- The page has three states, and the header, the toolbar and the add button are
+  the same in every one. Three templates would duplicate that chrome three
+  times and charge for a header change three times.
+- The states arrive as one discriminated `DocumentListStateModel`
+  (`loading` | `error` | `content`), and `DocumentListBody` swaps only the block
+  between the toolbar and the footer, with a guard clause per state and no
+  nesting.
+- An empty list is `content` with no documents, not a fourth state — the list
+  itself paints the empty message, so the template never has to ask how many
+  documents there are.
+- Sort and layout are deliberately asymmetric. Sort reorders the documents,
+  which the template does not own, so it is controlled from outside. Layout
+  changes nothing beyond this page, so the template keeps it in its own hook and
+  `initialLayout` only says where it starts.
+- **Rejected** — three templates, one per state: each reads flatter on its own,
+  but the screen goes back to deciding which one to mount and the shared chrome
+  needs a fourth component anyway.
+- **Rejected** — a template with a `children` slot: maximum flexibility, and it
+  gives up the one guarantee a template is for — that every state of this page
+  looks the way it was designed to.
+- **Cost** — adding a state means touching the union, the body and the stories
+  together; the compiler forces it, but it is three files rather than one.
+
+---
+
+## Name translation keys so they cannot be read as a plain string
+`2026-09-10` · `src/translations/`
+
+> At the call site, `translate('documentListAdd')` and a hardcoded label look
+> exactly alike.
+
+- The catalogue used camelCase keys, which read like any other identifier — the
+  one thing a key must never be mistaken for is the literal it replaces.
+- Keys are now `_SCREAMING_SNAKE` with a leading underscore, scoped by whoever
+  owns the copy: `_DOCUMENT_LIST_TEMPLATE_TITLE`, `_DOCUMENT_LIST_TEMPLATE_ADD`.
+  Copy shared across the app stays unscoped — `_LOADING`, `_CANCEL`, `_RETRY`.
+- The prefix carries an ownership claim: deleting `DocumentListTemplate` names
+  the keys that die with it, without grepping for the strings themselves.
+- **Rejected** — a generated constants map (`TranslationKeys.documentListAdd`):
+  it buys autocomplete, but `TranslationsModel = typeof en` already types every
+  key against the English catalogue, so it would be a second file to keep in
+  step for no extra safety.
+- **Cost** — the keys are long and the catalogues read noisier; renaming a
+  component means renaming its keys in three files at once.
+
+---
+
+## Every colour comes from the theme, and every surface names its own
+`2026-09-10` · `src/constants/theme.ts` · `src/ui/`
+
+> A hex code in a component is a colour no other component can find.
+
+- `Colors` in `src/constants/theme.ts` is the only source of colour in the app.
+  No component writes `#FFFFFF`, `'white'` or an `rgba()`: it reaches for the
+  role it means — `background.default`, `text.light`, `border.dark`.
+- The roles carry the meaning, so a repaint is one edit in one file rather than
+  a grep for hex codes that have drifted apart in a dozen components.
+- Surfaces are painted explicitly rather than inherited. `DocumentListTemplate`
+  gives its header, its body and its footer a background each, even where two
+  agree today, because a page that relies on its parent's colour breaks
+  silently the moment it is mounted somewhere else — and in a template that
+  parent is the safe area, whose insets would otherwise show the wrong colour
+  above the header.
+- **Rejected** — a hex code inline "just for this one": that is exactly how the
+  second and third copies get written, and none of them move when the palette
+  does.
+- **Cost** — the palette is a flat set of roles with three variants each, so a
+  colour that fits no existing role has to earn a new one instead of being
+  written where it is needed.
+
+---
