@@ -12,7 +12,7 @@ export const WebBadge = () => {
 
   return (
     <ThemedView style={styles.container}>
-      <ThemedText type="code" themeColor="textSecondary" style={styles.versionText}>
+      <ThemedText type="code" themeVariant="light" style={styles.versionText}>
         v{version}
       </ThemedText>
       <Image

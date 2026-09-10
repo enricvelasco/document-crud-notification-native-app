@@ -15,8 +15,8 @@ export const HintRow = ({ title = 'Try editing', hint = 'app/index.tsx' }: HintR
   return (
     <View style={styles.stepRow}>
       <ThemedText type="small">{title}</ThemedText>
-      <ThemedView type="backgroundSelected" style={styles.codeSnippet}>
-        <ThemedText themeColor="textSecondary">{hint}</ThemedText>
+      <ThemedView variant="dark" style={styles.codeSnippet}>
+        <ThemedText themeVariant="light">{hint}</ThemedText>
       </ThemedView>
     </View>
   )
