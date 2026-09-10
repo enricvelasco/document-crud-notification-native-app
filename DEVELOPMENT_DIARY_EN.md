@@ -322,3 +322,31 @@ alternative it beat and what it cost. Ordered oldest first.
 - **Cost** — a component per icon, written by hand.
 
 ---
+
+## Wrap AsyncStorage behind a project-owned storage port
+`2026-09-10` · `src/services/storage/`
+
+> Persistence is a replaceable implementation, so the app asks to store a value
+> under a key and never learns who answers.
+
+- Nothing in the app persisted anything yet, so the first storage call was the
+  moment to decide whether `@react-native-async-storage/async-storage` gets
+  imported once or everywhere.
+- `src/services/storage/` exposes `getItem` / `setItem` / `removeItem` /
+  `clear` over our own `StorageServiceModel`, and `asyncStorageAdapter.ts` is
+  the only file allowed to import the library — held by the same
+  `no-restricted-imports` list that already guards the picker, localization,
+  i18n and SVG.
+- The port speaks values, not strings: the adapter owns the
+  `JSON.stringify` / `JSON.parse`, so an unreadable stored value arrives as a
+  `StorageError` at the boundary instead of a `SyntaxError` inside a screen.
+- **Rejected** — a port that stores strings and leaves parsing to its callers:
+  the same parse and its `try`/`catch` then get rewritten at every call site,
+  each one free to disagree about what a corrupt value means.
+- **Cost** — `getItem<TValue>` casts whatever comes back, so a shape change is
+  caught where the value is used rather than where it is read.
+- **Open** — async-storage was picked over `expo-sqlite/kv-store` (Expo's
+  drop-in with the same API plus a synchronous read) because it is the library
+  that was asked for by name; the trade-off between the two was never weighed.
+
+---
