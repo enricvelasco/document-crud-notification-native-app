@@ -340,3 +340,34 @@ a más reciente.
 - **Coste** — un componente por icono, escrito a mano.
 
 ---
+
+## Envolver AsyncStorage tras un port de storage propio
+`2026-09-10` · `src/services/storage/`
+
+> La persistencia es una implementación reemplazable, así que la app pide
+> guardar un valor bajo una clave y nunca sabe quién le responde.
+
+- Todavía nada en la app persistía nada, así que la primera llamada a storage
+  era el momento de decidir si `@react-native-async-storage/async-storage` se
+  importa una vez o en todas partes.
+- `src/services/storage/` expone `getItem` / `setItem` / `removeItem` /
+  `clear` sobre nuestro propio `StorageServiceModel`, y
+  `asyncStorageAdapter.ts` es el único fichero que puede importar la librería:
+  lo sostiene la misma lista `no-restricted-imports` que ya protege el picker,
+  la localización, i18n y los SVG.
+- El port habla de valores, no de strings: el adapter es el dueño del
+  `JSON.stringify` / `JSON.parse`, así que un valor guardado ilegible llega
+  como `StorageError` en la frontera en vez de como `SyntaxError` dentro de una
+  screen.
+- **Descartado** — un port que guarde strings y deje el parseo a quien lo
+  llama: el mismo parseo y su `try`/`catch` se reescriben entonces en cada
+  punto de llamada, cada uno libre de discrepar sobre qué significa un valor
+  corrupto.
+- **Coste** — `getItem<TValue>` castea lo que vuelva, así que un cambio de
+  forma se detecta donde se usa el valor y no donde se lee.
+- **Abierto** — se eligió async-storage sobre `expo-sqlite/kv-store` (el
+  drop-in de Expo con la misma API más una lectura síncrona) porque es la
+  librería que se pidió por su nombre; nunca se sopesó el intercambio entre
+  ambas.
+
+---
