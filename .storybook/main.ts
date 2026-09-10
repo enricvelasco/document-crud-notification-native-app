@@ -1,14 +1,12 @@
 import type { StorybookConfig } from '@storybook/react-native-web-vite'
 
 // Local-only design documentation: Storybook renders every story and MDX page
-// found under src/ui/ and src/components/ui/. It is never bundled into the Expo
-// app — `yarn storybook` is the only entry point.
+// found under src/ui/. It is never bundled into the Expo app —
+// `yarn storybook` is the only entry point.
 const config: StorybookConfig = {
   stories: [
     '../src/ui/**/*.mdx',
     '../src/ui/**/*.stories.@(ts|tsx)',
-    '../src/components/ui/**/*.mdx',
-    '../src/components/ui/**/*.stories.@(ts|tsx)',
   ],
 
   addons: ['@storybook/addon-docs'],
