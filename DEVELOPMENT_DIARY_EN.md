@@ -730,3 +730,135 @@ alternative it beat and what it cost. Ordered oldest first.
   correctly with nothing in the code to enforce it.
 
 ---
+
+## Give the notification domain a read-only subscription, not the raw socket
+`2026-09-11` · `src/core/domains/notification/`
+
+> A caller that can `send` on the notification stream is a caller that can
+> invent a protocol nobody wrote down.
+
+- `/notifications` is a one-way feed: the server pushes, the app listens.
+  `subscribeToNotifications` therefore returns a `NotificationSubscriptionModel`
+  carrying only `close`, even though `webSocketService.connect` hands back both
+  `send` and `close`.
+- The caller passes `onNotification` and receives a `NotificationModel` already
+  mapped out of the server's PascalCase payload, so nothing above the domain
+  ever sees `UserID` or `DocumentTitle`.
+- A `WebSocketError` reaching `onError` is rewrapped as a `NotificationError`
+  with the original as `cause`, and a `connect` that throws outright surfaces
+  the same way — the view layer attributes the failure to notifications, not to
+  "a socket somewhere".
+- **Rejected** — returning the `WebSocketConnectionModel` straight through: it
+  is one line shorter and it puts the transport's whole surface, `send`
+  included, in every consumer's hands.
+- **Cost** — the day a notification needs an outbound message (an ack, a
+  filter), the subscription model has to grow a method instead of the caller
+  just using what the port already offers.
+
+---
+
+## Open the notification stream from a context provider, not from the root layout
+`2026-09-11` · `src/context/notificationContext/`
+
+> The socket has to live as long as the app does, and `_layout.tsx` is a
+> navigator, not a lifecycle.
+
+- `NotificationContextProvider` is an entry in `APP_CONTEXT_PROVIDERS`, so it
+  mounts with the app, subscribes once on mount and closes the stream on
+  unmount — the same slot every other global will use.
+- The work sits in `resources/services.ts` (`startNotificationLogging`, and the
+  two loggers it wires) and `useNotificationSubscription` is a bare `useEffect`
+  around it, so the behaviour is testable without a renderer — this project has
+  no `@testing-library/react-native`.
+- `context.test.ts` mocks the provider away: it is about the fold, and the real
+  provider would drag `appConfig` and a live socket into a test of composition.
+- **Rejected** — a `useEffect` in `_layout.tsx`: it works, and it puts app-wide
+  lifecycle in the file that is supposed to describe routes, where the next
+  global concern would land next to it.
+- **Cost** — the provider currently shares nothing, so it is a context in
+  placement only; until it holds state, a reader has to open it to find out it
+  exists for its side effect.
+
+---
+
+## Let screens reach notifications through a hook, never through the context
+`2026-09-11` · `src/hooks/useNotifications.ts` · `src/context/notificationContext/`
+
+> A screen should ask for "the notification count", not for "the thing the
+> notification context happens to hold".
+
+- `NotificationContext` now carries `{ count, startSubscription,
+  stopSubscription }`, and the provider still opens the stream on mount — the
+  app is subscribed from the root without any screen asking.
+- `useNotifications` in `src/hooks/` is the only consumer of `useContext`, so a
+  screen imports `@hooks/useNotifications` and never learns a context exists.
+  It throws when called outside the provider tree instead of handing back a
+  `null` every call site would have to narrow.
+- The start/stop lifecycle lives in `createNotificationStreamController`, a
+  plain closure in `resources/services.ts` holding one subscription: `start` is
+  a no-op while a stream is open, `stop` closes and clears it, and starting
+  again opens a fresh one. That makes the semantics testable with no renderer,
+  and it makes the effect's double-invoke under StrictMode a non-event.
+- This supersedes the cost noted in the previous entry — the provider now holds
+  state, so it is a context in substance and not only in placement.
+- **Rejected** — exporting `NotificationContext` for screens to consume
+  directly: one import less, and every screen would then be coupled to how the
+  value is provided, so moving notifications to a store later would touch every
+  one of them.
+- **Cost** — there is a single shared stream, so a screen calling
+  `stopSubscription` stops it for the whole app, not just for itself. Nothing in
+  the API says so.
+
+---
+
+## Give up on the notification stream after three failures and say so
+`2026-09-11` · `src/context/notificationContext/` · `src/hooks/useNotifications.ts`
+
+> A stream that keeps failing quietly is worse than one that stops and admits it.
+
+- The websocket adapter already retries with backoff, but nothing above it ever
+  decided a stream was beyond saving: against a dead backend it reconnected on
+  a loop while the UI showed a stale count and no way to know.
+- `createNotificationStreamController` now counts consecutive failures, closes
+  the subscription on the third and calls `onFailureLimitReached`. A delivered
+  notification resets the count, so an isolated blip never trips it, and once
+  the limit is hit further errors are ignored instead of re-reporting.
+- `useNotificationSubscription` turns that into `isError`, which
+  `useNotifications` hands to screens, so the UI can offer a retry —
+  `startSubscription` clears the flag and opens a fresh stream.
+- **Rejected** — putting the limit in `nativeWebSocketAdapter`: it counts
+  *reconnects*, which is a transport concern, while "this feature is broken,
+  tell the user" is the subscription's call and needs a React-visible signal
+  the adapter has no business owning.
+- **Cost** — every failure weighs the same, so three malformed messages close a
+  healthy socket, and the adapter's `maxReconnectAttempts: 5` is unreachable in
+  practice because three failed reconnects stop the stream first. The two
+  limits only make sense read together.
+
+---
+
+## Bind everything with const and give mutable state a name
+`2026-09-11` · `.claude/skills/const-bindings/` · `src/context/notificationContext/resources/services.ts`
+
+> `let` is not slower — it is just a promise the reader never gets.
+
+- The notification controller held its subscription and its failure count in two
+  `let`s at the top of a closure, which is how every factory in this codebase
+  had held state until now.
+- `src/` now declares bindings with `const` only. State that has to change lives
+  in a `const`-bound object typed by a `<Thing>StateModel` interface, so a
+  closure's memory is one typed declaration instead of loose bindings collected
+  down the file.
+- The reason is reading cost, not speed. `let` and `const` compile to the same
+  scope slot and hoist identically into the same temporal dead zone, so nothing
+  here runs faster. What changes is that a name means one thing for its whole
+  scope, and that mutation has to be spelled `state.x` where it happens.
+- **Rejected** — leaning on `prefer-const`: it only flags a `let` that is never
+  reassigned, which is the case nobody gets wrong, so it would leave untouched
+  every binding the policy is actually about.
+- **Cost** — the rule is not in `eslint.config.js` yet, because switching it on
+  fails the websocket and language adapters that predate it. Until those are
+  reshaped this policy rides on review, which is the thing this project decided
+  in its first entry not to rely on.
+
+---
