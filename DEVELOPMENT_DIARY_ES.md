@@ -460,6 +460,8 @@ a más reciente.
   stories a la vez; el compilador lo fuerza, pero son tres ficheros en lugar de
   uno.
 
+> **Superseded** parcialmente el `2026-09-11` por [Sacar la elección de layout del template para poder recordarla](#sacar-la-elección-de-layout-del-template-para-poder-recordarla) — el layout también se controla desde fuera ahora, así que la asimetría descrita arriba ya no se sostiene.
+
 ---
 
 ## Nombrar las claves de traducción para que no se lean como un string suelto
@@ -1189,5 +1191,33 @@ a más reciente.
 - **Coste** — una dependencia de runtime nueva (`expo-file-system@57`), una
   quinta entrada en cada lista de imports restringidos, y el fichero entero se
   sostiene en memoria como string base64, lo que no aguantará adjuntos grandes.
+
+---
+
+## Sacar la elección de layout del template para poder recordarla
+`2026-09-11` · `src/screens/documentListScreen/` · `src/ui/templates/documentListTemplate/`
+
+> Una preferencia que tiene que sobrevivir a la app no puede guardarla el
+> componente que la pinta.
+
+- El selector de lista/cuadrícula volvía a `list` en cada arranque: el template
+  lo guardaba en su propio `useState`, e `initialLayout` era una prop que
+  ninguna screen llegaba a pasar.
+- El layout se controla ahora igual que el orden — la screen es dueña del
+  estado, lo escribe en `@services/storage` en cada cambio y lo vuelve a leer
+  al montar, así que el template regresa a pintar lo que le dan.
+- El string almacenado pasa por el propio `isDocumentListLayout` del template
+  antes de darlo por bueno, así que un layout renombrado o un valor editado a
+  mano cae de vuelta a `list` en lugar de llegar a la toolbar como una opción
+  desconocida.
+- Un fallo de lectura o de escritura se registra y se traga: un dispositivo que
+  no puede guardar una preferencia debería seguir abriendo la página.
+- **Descartado** — dejar el estado en el template y sembrarlo con
+  `initialLayout` desde storage: storage responde de forma asíncrona, así que
+  la semilla llega después del primer render, que es justo cuando `useState`
+  deja de escucharla.
+- **Coste** — cambiar de layout vuelve a renderizar la screen entera y no solo
+  el template, y el primer frame tras el arranque siempre pinta `list` antes de
+  que aterrice el valor guardado.
 
 ---

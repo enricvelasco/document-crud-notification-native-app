@@ -435,6 +435,8 @@ alternative it beat and what it cost. Ordered oldest first.
 - **Cost** — adding a state means touching the union, the body and the stories
   together; the compiler forces it, but it is three files rather than one.
 
+> **Partially superseded** on `2026-09-11` by [Lift the layout choice out of the template so it can be remembered](#lift-the-layout-choice-out-of-the-template-so-it-can-be-remembered) — layout is controlled from outside now too, so the asymmetry described above no longer holds.
+
 ---
 
 ## Name translation keys so they cannot be read as a plain string
@@ -1136,5 +1138,32 @@ alternative it beat and what it cost. Ordered oldest first.
 - **Cost** — a new runtime dependency (`expo-file-system@57`), a fifth entry in
   every restricted-import list, and the whole file is held in memory as a base64
   string, which will not hold for large attachments.
+
+---
+
+## Lift the layout choice out of the template so it can be remembered
+`2026-09-11` · `src/screens/documentListScreen/` · `src/ui/templates/documentListTemplate/`
+
+> A preference that has to outlive the app cannot be kept by the component that
+> paints it.
+
+- The list/grid switch went back to `list` on every launch: the template held
+  it in its own `useState`, and `initialLayout` was a prop no screen ever
+  passed.
+- Layout is now controlled exactly like sort — the screen owns the state,
+  writes it to `@services/storage` on every change and reads it back on mount,
+  so the template goes back to painting what it is given.
+- The stored string is put through the template's own `isDocumentListLayout`
+  before it is trusted, so a renamed layout or a hand-edited value falls back
+  to `list` instead of reaching the toolbar as an unknown option.
+- A failed read or write is logged and swallowed: a device that cannot keep a
+  preference should still open the page.
+- **Rejected** — leaving the state in the template and seeding it with
+  `initialLayout` from storage: storage answers asynchronously, so the seed
+  arrives after the first render, which is precisely when `useState` stops
+  listening to it.
+- **Cost** — changing layout now re-renders the screen rather than the template
+  alone, and the first frame after launch always paints `list` before the
+  stored value lands.
 
 ---

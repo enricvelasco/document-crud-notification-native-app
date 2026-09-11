@@ -6,10 +6,12 @@ export const DocumentListScreen = () => {
   const {
     state,
     sort,
+    layout,
     isRefreshing,
     notificationCount,
     hasNotificationError,
     handleSortChange,
+    handleLayoutChange,
     handleRefresh,
     handleAddDocument,
     handleOpenNotifications,
@@ -19,10 +21,12 @@ export const DocumentListScreen = () => {
     <DocumentListTemplate
       state={state}
       sort={sort}
+      layout={layout}
       isRefreshing={isRefreshing}
       notificationCount={notificationCount}
       hasNotificationError={hasNotificationError}
       onSortChange={handleSortChange}
+      onLayoutChange={handleLayoutChange}
       onRefresh={handleRefresh}
       onAddDocument={handleAddDocument}
       onOpenNotifications={handleOpenNotifications}

@@ -89,10 +89,9 @@ const meta = {
           'everything around it is identical — so the states arrive as one',
           '`state` prop and the template swaps that block alone.',
           '',
-          'Sort and layout are deliberately asymmetric. Sort reorders the documents,',
-          'which the template does not own, so it is controlled from outside.',
-          'Layout changes nothing beyond this page, so the template keeps it itself',
-          'and `initialLayout` only says where it starts.',
+          'Sort and layout are both controlled from outside. Neither belongs to',
+          'the template: sort reorders documents it did not fetch, and the chosen',
+          'layout outlives the page — the screen remembers it between app launches.',
           '',
           'Refreshing belongs to the content block alone. Pulling the documents down',
           'asks the screen for fresh ones without ever swapping the body for the',
@@ -156,19 +155,25 @@ const meta = {
       ].join(' '),
       table: { defaultValue: { summary: 'false' } },
     },
-    initialLayout: {
+    layout: {
       control: 'inline-radio',
       options: Object.values(DocumentListLayoutTypes),
-      description: 'Which layout the page opens on. It is a starting point, not a lock.',
+      description: 'The selected layout. Controlled — the template only reports changes.',
+    },
+    onLayoutChange: {
+      control: false,
+      description: 'Called with the new layout when the list and grid switch is used.',
     },
   },
 
   args: {
     state: { type: DocumentListStateTypes.Content, documents: DOCUMENTS },
     sort: DocumentListSortTypes.Title,
+    layout: DocumentListLayoutTypes.List,
     notificationCount: 3,
     hasNotificationError: false,
     onSortChange: () => {},
+    onLayoutChange: () => {},
     onAddDocument: () => {},
     onOpenNotifications: () => {},
     onRefresh: () => {},
@@ -185,7 +190,7 @@ export const Default: Story = {}
 /** The same four documents tiled two to a row. */
 export const Grid: Story = {
   args: {
-    initialLayout: DocumentListLayoutTypes.Grid,
+    layout: DocumentListLayoutTypes.Grid,
   },
 }
 

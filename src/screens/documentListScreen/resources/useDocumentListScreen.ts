@@ -3,9 +3,19 @@ import { useEffect, useRef, useState } from 'react'
 import { APP_ROUTES } from '@constants/paths'
 import { useAppNavigation } from '@hooks/useAppNavigation'
 import { useNotifications } from '@hooks/useNotifications'
-import { DocumentListSortTypes, type DocumentListStateModel, DocumentListStateTypes } from '@ui/templates/documentListTemplate'
+import {
+  DocumentListLayoutTypes,
+  DocumentListSortTypes,
+  type DocumentListStateModel,
+  DocumentListStateTypes,
+} from '@ui/templates/documentListTemplate'
 
-import { loadDocumentListState, refreshDocumentListState } from './services'
+import {
+  loadDocumentListState,
+  refreshDocumentListState,
+  restoreDocumentListLayout,
+  saveDocumentListLayout,
+} from './services'
 
 const DOCUMENT_LIST_LOADING_STATE: DocumentListStateModel = {
   type: DocumentListStateTypes.Loading,
@@ -14,10 +24,12 @@ const DOCUMENT_LIST_LOADING_STATE: DocumentListStateModel = {
 export interface UseDocumentListScreenModel {
   state: DocumentListStateModel
   sort: DocumentListSortTypes
+  layout: DocumentListLayoutTypes
   isRefreshing: boolean
   notificationCount: number
   hasNotificationError: boolean
   handleSortChange: (sort: DocumentListSortTypes) => void
+  handleLayoutChange: (layout: DocumentListLayoutTypes) => void
   handleRefresh: () => void
   handleAddDocument: () => void
   handleOpenNotifications: () => void
@@ -27,6 +39,7 @@ export const useDocumentListScreen = (): UseDocumentListScreenModel => {
   const { navigateTo } = useAppNavigation()
   const { count, isError } = useNotifications()
   const [sort, setSort] = useState<DocumentListSortTypes>(DocumentListSortTypes.Title)
+  const [layout, setLayout] = useState<DocumentListLayoutTypes>(DocumentListLayoutTypes.List)
   const [state, setState] = useState<DocumentListStateModel>(DOCUMENT_LIST_LOADING_STATE)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const abortControllerRef = useRef<AbortController | null>(null)
@@ -40,6 +53,16 @@ export const useDocumentListScreen = (): UseDocumentListScreenModel => {
 
     return () => abortController.abort()
   }, [])
+
+  useEffect(() => {
+    void restoreDocumentListLayout(setLayout)
+  }, [])
+
+  const handleLayoutChange = (nextLayout: DocumentListLayoutTypes) => {
+    setLayout(nextLayout)
+
+    void saveDocumentListLayout(nextLayout)
+  }
 
   const handleRefresh = () => {
     const abortController = abortControllerRef.current
@@ -56,10 +79,12 @@ export const useDocumentListScreen = (): UseDocumentListScreenModel => {
   return {
     state,
     sort,
+    layout,
     isRefreshing,
     notificationCount: count,
     hasNotificationError: isError,
     handleSortChange: setSort,
+    handleLayoutChange,
     handleRefresh,
     handleAddDocument,
     handleOpenNotifications,

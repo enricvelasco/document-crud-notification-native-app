@@ -1,12 +1,24 @@
 import { ViewSectionStatusTypes } from '@core/views/documentListView'
 import { documentListItemsMock } from '@core/views/documentListView/mocks/documentListViewMock'
-import { DocumentListStateTypes } from '@ui/templates/documentListTemplate'
+import { DocumentListLayoutTypes, DocumentListStateTypes } from '@ui/templates/documentListTemplate'
 
-import { loadDocumentListState, logDocumentListError, refreshDocumentListState } from './resources/services'
-import { toDocumentListState } from './resources/utils'
+import { DOCUMENT_LIST_LAYOUT_STORAGE_KEY } from './resources/constants'
+import {
+  loadDocumentListState,
+  logDocumentListError,
+  readDocumentListLayout,
+  refreshDocumentListState,
+  restoreDocumentListLayout,
+  saveDocumentListLayout,
+} from './resources/services'
+import { toDocumentListLayout, toDocumentListState } from './resources/utils'
 
 jest.mock('@services/http', () => ({
   httpService: { get: jest.fn() },
+}))
+
+jest.mock('@services/storage', () => ({
+  storageService: { getItem: jest.fn(), setItem: jest.fn() },
 }))
 
 jest.mock('@core/views/documentListView', () => ({
@@ -16,6 +28,13 @@ jest.mock('@core/views/documentListView', () => ({
 
 const { loadDocumentListView } = jest.requireMock('@core/views/documentListView')
 const loadDocumentListViewMock = loadDocumentListView as jest.Mock
+
+const { storageService } = jest.requireMock('@services/storage') as {
+  storageService: {
+    getItem: jest.Mock
+    setItem: jest.Mock
+  }
+}
 
 const okSection = { status: ViewSectionStatusTypes.Ok, data: documentListItemsMock } as const
 
@@ -29,6 +48,8 @@ const abortedSection = { status: ViewSectionStatusTypes.Aborted } as const
 
 beforeEach(() => {
   loadDocumentListViewMock.mockReset()
+  storageService.getItem.mockReset().mockResolvedValue(null)
+  storageService.setItem.mockReset().mockResolvedValue(undefined)
 })
 
 describe('toDocumentListState', () => {
@@ -147,5 +168,78 @@ describe('refreshDocumentListState', () => {
 
     expect(setState).not.toHaveBeenCalled()
     expect(setIsRefreshing.mock.calls).toEqual([[true], [false]])
+  })
+})
+
+describe('toDocumentListLayout', () => {
+  it('restores a stored value that names a layout', () => {
+    expect(toDocumentListLayout('grid')).toBe(DocumentListLayoutTypes.Grid)
+  })
+
+  it('has nothing to restore when the layout was never stored', () => {
+    expect(toDocumentListLayout(null)).toBeNull()
+  })
+
+  it('discards a stored value that no longer names a layout', () => {
+    expect(toDocumentListLayout('carousel')).toBeNull()
+  })
+})
+
+describe('readDocumentListLayout', () => {
+  it('reads the layout from its own storage key', async () => {
+    storageService.getItem.mockResolvedValue(DocumentListLayoutTypes.Grid)
+
+    await expect(readDocumentListLayout()).resolves.toBe(DocumentListLayoutTypes.Grid)
+    expect(storageService.getItem).toHaveBeenCalledWith(DOCUMENT_LIST_LAYOUT_STORAGE_KEY)
+  })
+
+  it('opens on no layout at all when the storage read fails', async () => {
+    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined)
+    storageService.getItem.mockRejectedValue(new Error('storage unavailable'))
+
+    await expect(readDocumentListLayout()).resolves.toBeNull()
+
+    expect(consoleErrorSpy).toHaveBeenCalled()
+    consoleErrorSpy.mockRestore()
+  })
+})
+
+describe('saveDocumentListLayout', () => {
+  it('stores the selected layout under its own key', async () => {
+    await saveDocumentListLayout(DocumentListLayoutTypes.Grid)
+
+    expect(storageService.setItem).toHaveBeenCalledWith(
+      DOCUMENT_LIST_LAYOUT_STORAGE_KEY,
+      DocumentListLayoutTypes.Grid,
+    )
+  })
+
+  it('keeps the selection on screen when it could not be stored', async () => {
+    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined)
+    storageService.setItem.mockRejectedValue(new Error('quota exceeded'))
+
+    await expect(saveDocumentListLayout(DocumentListLayoutTypes.Grid)).resolves.toBeUndefined()
+
+    expect(consoleErrorSpy).toHaveBeenCalled()
+    consoleErrorSpy.mockRestore()
+  })
+})
+
+describe('restoreDocumentListLayout', () => {
+  it('applies the layout the previous session left behind', async () => {
+    const setLayout = jest.fn()
+    storageService.getItem.mockResolvedValue(DocumentListLayoutTypes.Grid)
+
+    await restoreDocumentListLayout(setLayout)
+
+    expect(setLayout).toHaveBeenCalledWith(DocumentListLayoutTypes.Grid)
+  })
+
+  it('leaves the default layout untouched when nothing was stored', async () => {
+    const setLayout = jest.fn()
+
+    await restoreDocumentListLayout(setLayout)
+
+    expect(setLayout).not.toHaveBeenCalled()
   })
 })
