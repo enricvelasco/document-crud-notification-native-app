@@ -706,3 +706,27 @@ alternative it beat and what it cost. Ordered oldest first.
   edit.
 
 ---
+
+## Combine the global providers into one component instead of nesting them by hand
+`2026-09-11` · `src/context/`
+
+> Adding a global context should cost one array entry, not another level of
+> indentation in the root layout.
+
+- `_layout.tsx` is the only place a context can be mounted app-wide, and every
+  provider added there pushes the navigation tree one level deeper and
+  re-indents everything below it.
+- `combineComponents` folds a list of providers into a single component — first
+  entry outermost, children reaching the innermost untouched — and
+  `AppContextProvider` is that fold applied to `APP_CONTEXT_PROVIDERS`.
+- The fold runs once at module level, so the component identity is stable;
+  combining during render would rebuild the component type on every pass and
+  remount the whole tree under it.
+- **Rejected** — nesting one provider per concern by hand in the layout: it
+  reads fine at two and becomes an unreviewable pyramid at six, where adding a
+  context re-indents every line below it.
+- **Cost** — the nesting order is now an array position instead of something
+  visible in the JSX, so a provider that depends on another has to be placed
+  correctly with nothing in the code to enforce it.
+
+---

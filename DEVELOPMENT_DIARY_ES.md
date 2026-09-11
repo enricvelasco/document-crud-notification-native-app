@@ -745,3 +745,28 @@ a más reciente.
   edición de env.
 
 ---
+
+## Combinar los providers globales en un componente en vez de anidarlos a mano
+`2026-09-11` · `src/context/`
+
+> Añadir un contexto global debería costar una entrada en un array, no otro
+> nivel de indentación en el layout raíz.
+
+- `_layout.tsx` es el único sitio donde montar un contexto para toda la app, y
+  cada provider que se añade ahí hunde un nivel más el árbol de navegación y
+  reindenta todo lo que hay debajo.
+- `combineComponents` pliega una lista de providers en un solo componente — la
+  primera entrada queda más afuera y los children llegan intactos al más
+  interno — y `AppContextProvider` es ese pliegue aplicado a
+  `APP_CONTEXT_PROVIDERS`.
+- El pliegue se ejecuta una vez a nivel de módulo, así que la identidad del
+  componente es estable; combinar durante el render reconstruiría el tipo del
+  componente en cada pasada y remontaría todo el árbol que cuelga de él.
+- **Descartado** — anidar a mano un provider por concepto en el layout: se lee
+  bien con dos y es una pirámide irrevisable con seis, donde añadir un contexto
+  reindenta todas las líneas de debajo.
+- **Coste** — el orden de anidamiento pasa a ser una posición en un array en vez
+  de algo visible en el JSX, así que un provider que dependa de otro hay que
+  colocarlo bien sin que nada en el código lo garantice.
+
+---
