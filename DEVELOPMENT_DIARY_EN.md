@@ -810,3 +810,55 @@ alternative it beat and what it cost. Ordered oldest first.
   the API says so.
 
 ---
+
+## Give up on the notification stream after three failures and say so
+`2026-09-11` · `src/context/notificationContext/` · `src/hooks/useNotifications.ts`
+
+> A stream that keeps failing quietly is worse than one that stops and admits it.
+
+- The websocket adapter already retries with backoff, but nothing above it ever
+  decided a stream was beyond saving: against a dead backend it reconnected on
+  a loop while the UI showed a stale count and no way to know.
+- `createNotificationStreamController` now counts consecutive failures, closes
+  the subscription on the third and calls `onFailureLimitReached`. A delivered
+  notification resets the count, so an isolated blip never trips it, and once
+  the limit is hit further errors are ignored instead of re-reporting.
+- `useNotificationSubscription` turns that into `isError`, which
+  `useNotifications` hands to screens, so the UI can offer a retry —
+  `startSubscription` clears the flag and opens a fresh stream.
+- **Rejected** — putting the limit in `nativeWebSocketAdapter`: it counts
+  *reconnects*, which is a transport concern, while "this feature is broken,
+  tell the user" is the subscription's call and needs a React-visible signal
+  the adapter has no business owning.
+- **Cost** — every failure weighs the same, so three malformed messages close a
+  healthy socket, and the adapter's `maxReconnectAttempts: 5` is unreachable in
+  practice because three failed reconnects stop the stream first. The two
+  limits only make sense read together.
+
+---
+
+## Bind everything with const and give mutable state a name
+`2026-09-11` · `.claude/skills/const-bindings/` · `src/context/notificationContext/resources/services.ts`
+
+> `let` is not slower — it is just a promise the reader never gets.
+
+- The notification controller held its subscription and its failure count in two
+  `let`s at the top of a closure, which is how every factory in this codebase
+  had held state until now.
+- `src/` now declares bindings with `const` only. State that has to change lives
+  in a `const`-bound object typed by a `<Thing>StateModel` interface, so a
+  closure's memory is one typed declaration instead of loose bindings collected
+  down the file.
+- The reason is reading cost, not speed. `let` and `const` compile to the same
+  scope slot and hoist identically into the same temporal dead zone, so nothing
+  here runs faster. What changes is that a name means one thing for its whole
+  scope, and that mutation has to be spelled `state.x` where it happens.
+- **Rejected** — leaning on `prefer-const`: it only flags a `let` that is never
+  reassigned, which is the case nobody gets wrong, so it would leave untouched
+  every binding the policy is actually about.
+- **Cost** — the rule is not in `eslint.config.js` yet, because switching it on
+  fails the websocket and language adapters that predate it. Until those are
+  reshaped this policy rides on review, which is the thing this project decided
+  in its first entry not to rely on.
+
+---

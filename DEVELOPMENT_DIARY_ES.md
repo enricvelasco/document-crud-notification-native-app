@@ -851,3 +851,58 @@ a más reciente.
   lo dice.
 
 ---
+
+## Rendirse con el stream de notificaciones tras tres fallos y decirlo
+`2026-09-11` · `src/context/notificationContext/` · `src/hooks/useNotifications.ts`
+
+> Un stream que falla en silencio es peor que uno que se para y lo admite.
+
+- El adapter de websocket ya reintenta con backoff, pero por encima nadie
+  decidía nunca que un stream ya no tenía arreglo: contra un backend caído
+  reconectaba en bucle mientras la UI mostraba un contador viejo sin forma de
+  saberlo.
+- `createNotificationStreamController` ahora cuenta fallos consecutivos, cierra
+  la suscripción al tercero y llama a `onFailureLimitReached`. Una notificación
+  entregada reinicia la cuenta, así que un fallo suelto nunca lo dispara, y una
+  vez alcanzado el límite los errores siguientes se ignoran en vez de volver a
+  reportarlo.
+- `useNotificationSubscription` lo convierte en `isError`, que `useNotifications`
+  entrega a las pantallas, así que la UI puede ofrecer un reintento —
+  `startSubscription` limpia el flag y abre un stream nuevo.
+- **Descartado** — poner el límite en `nativeWebSocketAdapter`: ahí se cuentan
+  *reconexiones*, que son cosa del transporte, mientras que "esta feature está
+  rota, avisa al usuario" le toca a la suscripción y necesita una señal visible
+  para React que el adapter no tiene por qué gestionar.
+- **Coste** — todos los fallos pesan igual, así que tres mensajes malformados
+  cierran un socket sano, y el `maxReconnectAttempts: 5` del adapter es
+  inalcanzable en la práctica porque tres reconexiones fallidas paran el stream
+  antes. Los dos límites solo se entienden leídos juntos.
+
+---
+
+## Declarar todo con const y ponerle nombre al estado mutable
+`2026-09-11` · `.claude/skills/const-bindings/` · `src/context/notificationContext/resources/services.ts`
+
+> `let` no es más lento — simplemente es una promesa que el lector nunca recibe.
+
+- El controller de notificaciones guardaba su suscripción y su contador de
+  fallos en dos `let` al principio de un closure, que es como toda factory de
+  este codebase había guardado estado hasta ahora.
+- En `src/` las declaraciones son solo `const`. El estado que tiene que cambiar
+  vive en un objeto ligado a `const` y tipado por una interfaz
+  `<Thing>StateModel`, así la memoria de un closure es una única declaración
+  tipada en vez de bindings sueltos repartidos por el fichero.
+- El motivo es el coste de lectura, no la velocidad. `let` y `const` compilan al
+  mismo scope slot y hacen hoisting igual, a la misma temporal dead zone, así
+  que aquí no corre nada más rápido. Lo que cambia es que un nombre significa
+  una sola cosa en todo su scope, y que la mutación hay que escribirla
+  `state.x` justo donde ocurre.
+- **Descartado** — apoyarse en `prefer-const`: solo marca un `let` que nunca se
+  reasigna, que es justo el caso que nadie falla, así que dejaría intacto todo
+  binding del que va realmente esta política.
+- **Coste** — la regla todavía no está en `eslint.config.js`, porque activarla
+  rompe los adapters de websocket y de language, anteriores a la política. Hasta
+  reformarlos esto depende de la review, que es justo de lo que este proyecto
+  decidió no depender en su primera entrada.
+
+---
