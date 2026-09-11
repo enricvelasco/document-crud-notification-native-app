@@ -19,7 +19,7 @@ export const logNotification = (notification: NotificationModel): void =>
   console.log(NOTIFICATION_LOG_LABEL, notification)
 
 export const logNotificationError = (error: NotificationError): void =>
-  console.error(NOTIFICATION_LOG_LABEL, error)
+  console.warn(NOTIFICATION_LOG_LABEL, error)
 
 export const toNotificationEntry = (
   notification: NotificationModel,
@@ -57,6 +57,14 @@ export const createNotificationStreamController = (
     options.onNotification(notification)
   }
 
+  const fail = (): void => {
+    if (hasReachedFailureLimit(state.failureCount)) return
+
+    state.failureCount = MAX_NOTIFICATION_FAILURES
+    stop()
+    options.onFailureLimitReached()
+  }
+
   const handleError = (error: NotificationError): void => {
     if (hasReachedFailureLimit(state.failureCount)) return
 
@@ -79,5 +87,5 @@ export const createNotificationStreamController = (
     })
   }
 
-  return { start, stop }
+  return { start, stop, fail }
 }

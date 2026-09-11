@@ -46,7 +46,7 @@ beforeEach(() => {
   onNotificationMock.mockReset()
   onFailureLimitReachedMock.mockReset()
   subscribeToNotificationsMock.mockReturnValue({ close: closeMock })
-  jest.spyOn(console, 'error').mockImplementation(() => undefined)
+  jest.spyOn(console, 'warn').mockImplementation(() => undefined)
 })
 
 afterEach(() => jest.restoreAllMocks())
@@ -62,10 +62,10 @@ describe('logNotification', () => {
 })
 
 describe('logNotificationError', () => {
-  it('logs a failing stream as an error', () => {
+  it('warns about a failing stream instead of raising it as an error', () => {
     logNotificationError(streamError)
 
-    expect(console.error).toHaveBeenCalledWith('[notification]', streamError)
+    expect(console.warn).toHaveBeenCalledWith('[notification]', streamError)
   })
 })
 
@@ -128,12 +128,67 @@ describe('createNotificationStreamController', () => {
     expect(subscribeToNotificationsMock).toHaveBeenCalledTimes(2)
   })
 
+  it('closes the stream when it is failed', () => {
+    const controller = createNotificationStreamController(controllerOptions)
+
+    controller.start()
+    controller.fail()
+
+    expect(closeMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('reports the failure limit as reached when it is failed', () => {
+    const controller = createNotificationStreamController(controllerOptions)
+
+    controller.start()
+    controller.fail()
+
+    expect(onFailureLimitReachedMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('reports the failure limit only once when it is failed twice', () => {
+    const controller = createNotificationStreamController(controllerOptions)
+
+    controller.start()
+    controller.fail()
+    controller.fail()
+
+    expect(onFailureLimitReachedMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('swallows the failures arriving after it was failed', () => {
+    const controller = createNotificationStreamController(controllerOptions)
+
+    controller.start()
+    controller.fail()
+    failStream(MAX_NOTIFICATION_FAILURES)
+
+    expect(onFailureLimitReachedMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('reports a failure even when there is no stream to close', () => {
+    createNotificationStreamController(controllerOptions).fail()
+
+    expect(closeMock).not.toHaveBeenCalled()
+    expect(onFailureLimitReachedMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('opens a new stream when it is started again after a failure', () => {
+    const controller = createNotificationStreamController(controllerOptions)
+
+    controller.start()
+    controller.fail()
+    controller.start()
+
+    expect(subscribeToNotificationsMock).toHaveBeenCalledTimes(2)
+  })
+
   it('logs every failure it receives', () => {
     createNotificationStreamController(controllerOptions).start()
 
     failStream(1)
 
-    expect(console.error).toHaveBeenCalledWith('[notification]', streamError)
+    expect(console.warn).toHaveBeenCalledWith('[notification]', streamError)
   })
 
   it('keeps the stream open while it stays below the failure limit', () => {

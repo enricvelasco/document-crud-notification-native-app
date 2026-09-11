@@ -43,7 +43,9 @@ const meta = {
           'cannot both be had natively. This component paints the sheet itself instead.',
           '',
           'It holds no state and decides nothing — the caller renders it while the route',
-          'is open and handles `onDismiss`.',
+          'is open and handles `onDismiss`. Leaving `onDismiss` out drops the overlay',
+          'press target, which turns the sheet into a blocking one the caller closes by',
+          'unmounting it.',
         ].join('\n'),
       },
     },
@@ -51,7 +53,8 @@ const meta = {
 
   argTypes: {
     onDismiss: {
-      description: 'Called when the overlay above the sheet is pressed.',
+      description:
+        'Called when the overlay above the sheet is pressed. Without it the overlay is not pressable.',
     },
   },
 
@@ -82,5 +85,12 @@ export const FilledContent: Story = {
         ))}
       </View>
     ),
+  },
+}
+
+/** Without `onDismiss` the overlay is inert and the sheet cannot be dismissed. */
+export const NotDismissible: Story = {
+  args: {
+    onDismiss: undefined,
   },
 }

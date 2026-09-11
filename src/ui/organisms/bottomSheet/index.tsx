@@ -10,7 +10,7 @@ import Animated, {
 import { BOTTOM_SHEET_ANIMATION_DURATION, styles } from './styles'
 
 export type BottomSheetProps = PropsWithChildren<{
-  onDismiss: () => void
+  onDismiss?: () => void
 }>
 
 export const BottomSheet = ({ children, onDismiss }: BottomSheetProps) => {
@@ -21,7 +21,9 @@ export const BottomSheet = ({ children, onDismiss }: BottomSheetProps) => {
         exiting={FadeOut.duration(BOTTOM_SHEET_ANIMATION_DURATION)}
         style={styles.overlay}
       >
-        <Pressable accessibilityRole="button" style={styles.overlayPressable} onPress={onDismiss} />
+        {onDismiss ? (
+          <Pressable accessibilityRole="button" style={styles.overlayPressable} onPress={onDismiss} />
+        ) : null}
       </Animated.View>
 
       <Animated.View

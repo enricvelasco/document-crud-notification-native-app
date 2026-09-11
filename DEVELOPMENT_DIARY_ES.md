@@ -1311,3 +1311,90 @@ a más reciente.
   banner.
 
 ---
+
+## Ser dueños del estado de red tras un puerto en vez de llamar al hook de Expo
+`2026-09-11` · `src/services/network/` · `src/hooks/useNetworkState.ts`
+
+> Un hook que cada componente llama por su cuenta le da a cada uno su propia respuesta.
+
+- `expo-network` trae `useNetworkState()`, pero abre un listener de plataforma
+  por cada componente que lo llama y devuelve un objeto nuevo en cada render, así
+  que nadie aguas abajo puede compartir una lectura ni comparar dos.
+- `networkService` envuelve la librería en el único adapter con permiso para
+  importarla, guarda un único snapshot y abre el listener de plataforma una sola
+  vez — con el primer suscriptor — de modo que `useNetworkState` es un
+  `useSyncExternalStore` sobre una sola verdad, la forma que `useTranslate` ya
+  usa para el idioma.
+- El snapshot solo se sustituye cuando `isOnline` o `status` cambian de verdad,
+  así que una lectura repetida devuelve la misma referencia y no re-renderiza
+  nada.
+- La app arranca optimista (online, estado desconocido) y la primera lectura real
+  llega de forma asíncrona, así que el aviso de sin conexión no puede parpadear
+  en un arranque sano.
+- **Descartado** — `isInternetReachable` como único veredicto: se queda en
+  `undefined` hasta que Android valida la conexión, lo que se leería como sin
+  conexión durante los primeros instantes de cada arranque.
+- **Coste** — una conexión levantada que no llega a internet solo se detecta en
+  Android; en iOS ese campo refleja `isConnected`, así que un portal cautivo pasa
+  desapercibido.
+
+---
+
+## Bloquear la app sin red con una hoja sobre la ruta, no con una ruta propia
+`2026-09-11` · `src/ui/organisms/networkStatusGate/` · `src/ui/organisms/networkStatusSheet/` · `src/app/_layout.tsx`
+
+> Navegar fuera de la ruta tira justo aquello que el usuario quiere recuperar.
+
+- `NetworkStatusGate` se monta una vez junto a `<Stack>` en el layout raíz y no
+  pinta nada mientras el dispositivo está online, así que hay un único punto de
+  cableado y ninguna pantalla tiene que saber que la red existe.
+- Sin conexión llena la pantalla con `BottomSheet`, cuyo `onDismiss` ahora es
+  opcional: sin él el overlay no tiene zona pulsable, así que la hoja bloquea
+  todo lo que hay detrás y el botón de reintentar es la única salida.
+- La hoja no lee ningún servicio ni guarda estado — recibe el estado de la
+  conexión, si hay una comprobación en curso y el handler de reintento — así que
+  el gate se queda con todas las decisiones.
+- **Descartado** — una ruta `/offline` empujada al perder la red: la ruta de
+  debajo es exactamente lo que tiene que volver, y empujar dejaría una pantalla
+  de sin conexión en el historial de la que el usuario luego tiene que salir.
+- **Coste** — la hoja tapa la pantalla incluso para trabajo que no necesita red,
+  así que un borrador de formulario sin enviar queda fuera de alcance hasta que
+  vuelve la conexión.
+
+---
+
+## Cortar el stream con el estado de red y recuperar reemplazando la ruta
+`2026-09-11` · `src/context/notificationContext/` · `src/hooks/useAppNavigation.ts`
+
+> Un socket reintentando contra una red muerta es gastar batería con una línea de log.
+
+- `useNotificationSubscription` engancha su efecto a `isOnline` y, en la rama de
+  sin conexión, llama a `fail` en vez de a `stop`: perder la red toma exactamente
+  el mismo camino que ya tomaban tres errores seguidos del stream, así que el
+  socket se cierra, sus timers de reconexión se van con él y el feed se declara
+  no disponible en lugar de aparentar salud estando congelado.
+- `fail` vive en el controller del stream y no en el hook, porque el contador de
+  fallos es suyo: fija la cuenta en el límite, así que un error tardío del socket
+  que acaba de cerrar no puede reportar dos veces la misma caída.
+- Volver a tener red limpia el error durante el render, donde es estado derivado
+  y no un efecto secundario; el efecto abre después un socket nuevo.
+- Perder la red ya es un estado que la app tiene previsto, así que el stream
+  reporta sus fallos con `console.warn` y no con `console.error`: LogBox pintaba
+  una caja roja de crash en dev para algo que acaba en un aviso de diseño.
+- `startSubscription` — el botón de reconectar de la página de notificaciones —
+  se niega a ejecutarse sin conexión, así que la única vía pública de vuelta al
+  stream no puede reabrirlo por debajo del aviso.
+- Caerse la red normalmente falla el stream tres veces antes y deja `isError`
+  levantado, así que el hook lo limpia en la transición a online durante el
+  render — si no, el feed volvería sano bajo un banner caduco de "desconectado".
+- Reintentar le pide a `networkService.refresh()` una lectura nueva y solo llama
+  a `refreshCurrentRoute` si vuelve online; eso hace `router.replace` del
+  pathname actual, y replace siempre monta una key de ruta nueva, así que la
+  pantalla vuelve a ejecutar sus cargas donde el usuario ya estaba.
+- **Descartado** — remontar el árbol con una key que cambia: el estado del
+  navegador vive en ese árbol, así que el remontaje dejaría al usuario en la
+  primera ruta en lugar de en la que perdió.
+- **Coste** — el reintento rehace la ruta desde cero, así que todo lo que la
+  pantalla tuviera y no viniera de un repositorio se va con ella.
+
+---

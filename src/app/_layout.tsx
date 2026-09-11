@@ -2,6 +2,7 @@ import { Stack } from 'expo-router'
 
 import { Colors } from '@constants/theme'
 import { AppContextProvider } from '@context'
+import { NetworkStatusGate } from '@ui/organisms/networkStatusGate'
 
 const SHEET_SCREEN_OPTIONS = {
   presentation: 'formSheet',
@@ -22,6 +23,8 @@ const RootLayout = () => {
         />
         <Stack.Screen name="notifications" />
       </Stack>
+
+      <NetworkStatusGate />
     </AppContextProvider>
   )
 }

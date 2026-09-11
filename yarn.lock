@@ -4731,6 +4731,11 @@ expo-modules-jsi@~57.0.8:
   resolved "https://registry.yarnpkg.com/expo-modules-jsi/-/expo-modules-jsi-57.0.8.tgz#30edf5cccf8fa77d011872cbd96faa1312508399"
   integrity sha512-MFwvKP0FXLkEET27KsKvOh/L7Dpu2d00UgzAlmKozJgtI23WTKSyKPxu+EOSs9peSgkHzKI0vQOhWjOseGBMkQ==
 
+expo-network@~57.0.2:
+  version "57.0.2"
+  resolved "https://registry.yarnpkg.com/expo-network/-/expo-network-57.0.2.tgz#d79914a260ee05dbf5420811e0ee55d390d41849"
+  integrity sha512-BfK1kdftZcM6o9o1FAG7/y0l6vWX0n8td0M5lwkvaMeRXZ9LkRwOi9CQXwvsMTQGQiPwtQXgwiAze13cqjt75g==
+
 expo-router@~57.0.19:
   version "57.0.19"
   resolved "https://registry.yarnpkg.com/expo-router/-/expo-router-57.0.19.tgz#64f313594a37eff66841b30fea997597a2728002"

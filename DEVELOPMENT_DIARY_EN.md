@@ -1252,3 +1252,85 @@ alternative it beat and what it cost. Ordered oldest first.
   feed is down, which is accurate but only if the banner is read.
 
 ---
+
+## Own the network state behind a port instead of calling Expo's hook
+`2026-09-11` · `src/services/network/` · `src/hooks/useNetworkState.ts`
+
+> A hook every component calls on its own gives every component its own answer.
+
+- `expo-network` ships `useNetworkState()`, but it opens one platform listener
+  per component that calls it and returns a fresh object every render, so
+  nothing downstream can share a reading or compare two of them.
+- `networkService` wraps the library in the one adapter allowed to import it,
+  holds a single snapshot, and opens the platform listener once — on the first
+  subscriber — so `useNetworkState` is a `useSyncExternalStore` over one truth,
+  the shape `useTranslate` already uses for the language.
+- The snapshot is replaced only when `isOnline` or `status` actually change, so
+  a repeated reading returns the same reference and re-renders nothing.
+- The app starts optimistic (online, status unknown) and the first real reading
+  lands asynchronously, so the offline notice cannot flash on a healthy launch.
+- **Rejected** — `isInternetReachable` alone as the verdict: it stays
+  `undefined` until Android validates the connection, which would read as
+  offline for the first moments of every launch.
+- **Cost** — a connection that is up but cannot reach the internet is only
+  caught on Android; on iOS that field mirrors `isConnected`, so a captive
+  portal goes unnoticed.
+
+---
+
+## Block the offline app with a sheet over the route, not a route of its own
+`2026-09-11` · `src/ui/organisms/networkStatusGate/` · `src/ui/organisms/networkStatusSheet/` · `src/app/_layout.tsx`
+
+> Navigating away from the route throws away the thing the user wants back.
+
+- `NetworkStatusGate` is mounted once beside `<Stack>` in the root layout and
+  paints nothing while the device is online, so there is a single wiring point
+  and no screen has to know the network exists.
+- Offline it fills the screen with `BottomSheet`, whose `onDismiss` is now
+  optional: without it the overlay has no press target, so the sheet blocks
+  everything behind it and the retry button is the only way out.
+- The sheet reads no service and holds no state — it takes the status, whether
+  a check is running, and the retry handler — so the gate owns every decision.
+- **Rejected** — an `/offline` route pushed on disconnect: the route underneath
+  is exactly what has to come back, and pushing would leave an offline screen in
+  the history for the user to walk out of afterwards.
+- **Cost** — the sheet covers the screen even for work that needs no network, so
+  an unsent form draft is out of reach until the connection returns.
+
+---
+
+## Cut the stream on the network state and recover by replacing the route
+`2026-09-11` · `src/context/notificationContext/` · `src/hooks/useAppNavigation.ts`
+
+> A socket retrying into a dead network is a battery drain with a log line.
+
+- `useNotificationSubscription` keys its effect on `isOnline` and, on the offline
+  branch, calls `fail` rather than `stop`: losing the network takes the exact
+  path three consecutive stream errors already took, so the socket closes, its
+  reconnect timers go with it, and the feed reports itself unavailable instead of
+  looking healthy but frozen.
+- `fail` sits on the stream controller and not in the hook, because the
+  controller owns the failure counter: it pins the count at the limit, so a late
+  error from the socket it just closed cannot report the same outage twice.
+- Coming back online clears the error during render, where it is derived state
+  and not a side effect; the effect then opens a fresh socket.
+- Losing the network is a state the app plans for now, so the stream reports its
+  failures with `console.warn` rather than `console.error`: LogBox was painting a
+  red crash box in dev for a condition that ends in a designed notice.
+- `startSubscription` — the reconnect button on the notification page — refuses
+  to run while offline, so the one public way back into the stream cannot reopen
+  it underneath the notice.
+- Dropping the network normally fails the stream three times first and leaves
+  `isError` set, so the hook clears it on the online transition during render —
+  otherwise the feed would come back healthy under a stale "disconnected" banner.
+- Retry asks `networkService.refresh()` for a fresh reading and only calls
+  `refreshCurrentRoute` once it comes back online; that `router.replace`s the
+  current pathname, and replace always mounts a new route key, so the screen
+  re-runs its loaders where the user already was.
+- **Rejected** — remounting the tree behind a changing key: the navigator's
+  state lives in that tree, so the remount would drop the user on the first
+  route instead of the one they lost.
+- **Cost** — the retry re-runs the route from scratch, so anything the screen
+  held that did not come from a repository goes with it.
+
+---

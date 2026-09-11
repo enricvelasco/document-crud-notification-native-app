@@ -7,6 +7,7 @@ import {
 
 import type { NotificationContextModel, NotificationEntryModel, NotificationStreamControllerModel } from '@context'
 import type { NotificationModel } from '@core/domains/notification'
+import { useNetworkState } from '@hooks/useNetworkState'
 
 import { addNotificationEntry, createNotificationStreamController, logNotification } from './services'
 
@@ -19,10 +20,23 @@ const INITIAL_ERROR_STATE = false
 const increaseCount = (count: number): number => count + 1
 
 export const useNotificationSubscription = (): NotificationContextModel => {
+  const { isOnline } = useNetworkState()
   const [notifications, setNotifications] = useState(INITIAL_NOTIFICATIONS)
   const [count, setCount] = useState(INITIAL_NOTIFICATION_COUNT)
   const [isError, setIsError] = useState(INITIAL_ERROR_STATE)
+  const [previousIsOnline, setPreviousIsOnline] = useState(isOnline)
   const controllerRef = useRef<NotificationStreamControllerModel | null>(null)
+
+  const hasNetworkChanged = previousIsOnline !== isOnline
+  const hasReconnected = hasNetworkChanged && isOnline
+
+  if (hasNetworkChanged) {
+    setPreviousIsOnline(isOnline)
+  }
+
+  if (hasReconnected) {
+    setIsError(INITIAL_ERROR_STATE)
+  }
 
   const handleNotification = useCallback((notification: NotificationModel): void => {
     logNotification(notification)
@@ -42,19 +56,29 @@ export const useNotificationSubscription = (): NotificationContextModel => {
   const startStream = useCallback((): void => controllerRef.current?.start(), [])
 
   const startSubscription = useCallback((): void => {
+    if (!isOnline) return
+
     setIsError(INITIAL_ERROR_STATE)
     startStream()
-  }, [startStream])
+  }, [isOnline, startStream])
 
   const stopSubscription = useCallback((): void => controllerRef.current?.stop(), [])
+
+  const failSubscription = useCallback((): void => controllerRef.current?.fail(), [])
 
   const markAsRead = useCallback((): void => setCount(INITIAL_NOTIFICATION_COUNT), [])
 
   useEffect(() => {
+    if (!isOnline) {
+      failSubscription()
+
+      return
+    }
+
     startStream()
 
     return stopSubscription
-  }, [startStream, stopSubscription])
+  }, [isOnline, failSubscription, startStream, stopSubscription])
 
   return {
     notifications,
