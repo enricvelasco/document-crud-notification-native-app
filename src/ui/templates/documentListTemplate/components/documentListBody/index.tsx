@@ -1,3 +1,5 @@
+import { useTranslate } from '@hooks/useTranslate'
+
 import {
   type DocumentListLayoutTypes,
   type DocumentListSortTypes,
@@ -5,9 +7,10 @@ import {
   DocumentListStateTypes,
 } from '../../models'
 import { sortDocumentList } from '../../resources/sortDocumentList'
+import { toDocumentListDocuments } from '../../resources/toDocumentListDocuments'
+import { toDocumentListEmptyMessage } from '../../resources/toDocumentListEmptyMessage'
 import { DocumentListContent } from '../documentListContent'
 import { DocumentListLoading } from '../documentListLoading'
-import { DocumentListMessage } from '../documentListMessage'
 
 export interface DocumentListBodyProps {
   state: DocumentListStateModel
@@ -18,15 +21,14 @@ export interface DocumentListBodyProps {
 }
 
 export const DocumentListBody = ({ state, sort, layout, isRefreshing, onRefresh }: DocumentListBodyProps) => {
-  if (state.type === DocumentListStateTypes.Loading) return <DocumentListLoading />
+  const translate = useTranslate()
 
-  if (state.type === DocumentListStateTypes.Error) {
-    return <DocumentListMessage message={state.message} />
-  }
+  if (state.type === DocumentListStateTypes.Loading) return <DocumentListLoading />
 
   return (
     <DocumentListContent
-      documents={sortDocumentList(state.documents, sort)}
+      documents={sortDocumentList(toDocumentListDocuments(state), sort)}
+      emptyMessage={toDocumentListEmptyMessage(state, translate)}
       layout={layout}
       isRefreshing={isRefreshing}
       onRefresh={onRefresh}
