@@ -24,6 +24,8 @@ export interface DocumentListTemplateProps {
   onSortChange: (sort: DocumentListSortTypes) => void
   onAddDocument: () => void
   onOpenNotifications: () => void
+  isRefreshing?: boolean
+  onRefresh?: () => void
   notificationCount?: number
   initialLayout?: DocumentListLayoutTypes
 }
@@ -34,6 +36,8 @@ export const DocumentListTemplate = ({
   onSortChange,
   onAddDocument,
   onOpenNotifications,
+  isRefreshing,
+  onRefresh,
   notificationCount = 0,
   initialLayout = DocumentListLayoutTypes.List,
 }: DocumentListTemplateProps) => {
@@ -74,7 +78,12 @@ export const DocumentListTemplate = ({
           />
         </View>
 
-        <DocumentListBody state={state} layout={layout} />
+        <DocumentListBody
+          state={state}
+          layout={layout}
+          isRefreshing={isRefreshing}
+          onRefresh={onRefresh}
+        />
       </View>
 
       <View style={styles.footer}>

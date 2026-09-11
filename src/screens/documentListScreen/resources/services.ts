@@ -5,6 +5,14 @@ import { toDocumentListState } from './utils'
 
 export type SetDocumentListStateType = (state: DocumentListStateModel) => void
 
+export type SetDocumentListRefreshingType = (isRefreshing: boolean) => void
+
+export interface RefreshDocumentListStateModel {
+  setState: SetDocumentListStateType
+  setIsRefreshing: SetDocumentListRefreshingType
+  signal: AbortSignal
+}
+
 export const logDocumentListError = (
   documents: DocumentListViewModel['documents'],
 ): void => {
@@ -26,4 +34,16 @@ export const loadDocumentListState = async (
   if (!nextState) return
 
   setState(nextState)
+}
+
+export const refreshDocumentListState = async ({
+  setState,
+  setIsRefreshing,
+  signal,
+}: RefreshDocumentListStateModel): Promise<void> => {
+  setIsRefreshing(true)
+
+  await loadDocumentListState(setState, signal)
+
+  setIsRefreshing(false)
 }

@@ -56,6 +56,11 @@ const meta = {
           'When `items` is empty the list paints `empty` instead, centred in the space',
           'the rows would have taken. The component holds no state and knows nothing',
           'about what it is listing.',
+          '',
+          'Pull to refresh is opt-in and controlled. Pass `onRefresh` and the list',
+          'grows the gesture; leave it out and there is no spinner to pull down at',
+          'all. `isRefreshing` is owned by the caller, because only the caller knows',
+          'when its reload finished — the list never turns the spinner off by itself.',
         ].join('\n'),
       },
     },
@@ -85,6 +90,17 @@ const meta = {
     empty: {
       control: false,
       description: 'Painted in place of the rows when `items` is empty.',
+    },
+    isRefreshing: {
+      control: 'boolean',
+      description: 'Whether the pull-to-refresh spinner is showing. Controlled by the caller.',
+    },
+    onRefresh: {
+      control: false,
+      description: [
+        'Called when the list is pulled down past the top. Omitting it removes the',
+        'gesture entirely.',
+      ].join(' '),
     },
   },
 
@@ -136,5 +152,29 @@ export const Empty: Story = {
 export const EmptyWithoutFallback: Story = {
   args: {
     items: [],
+  },
+}
+
+/** With an `onRefresh`, pulling the rows down past the top asks for fresh data. */
+export const PullToRefresh: Story = {
+  args: {
+    onRefresh: () => {},
+  },
+}
+
+/** The reload is in flight: `isRefreshing` is the caller saying so, not the list. */
+export const Refreshing: Story = {
+  args: {
+    isRefreshing: true,
+    onRefresh: () => {},
+  },
+}
+
+/** Nothing to list is still worth refreshing — the empty state pulls down too. */
+export const EmptyPullToRefresh: Story = {
+  args: {
+    items: [],
+    empty: <Text style={styles.empty}>There are no documents yet.</Text>,
+    onRefresh: () => {},
   },
 }
