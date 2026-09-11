@@ -935,3 +935,36 @@ a más reciente.
   retry desde la UI, así que el badge informa del fallo sin ofrecer una salida.
 
 ---
+
+## Que el formulario de nuevo documento sea dueño de sus campos y `onSubmit` del resultado
+`2026-09-11` · `src/ui/templates/newDocumentFormTemplate/`
+
+> El template puede sostener un nombre a medio escribir, pero no le corresponde
+> decidir qué le dice al usuario una creación fallida.
+
+- El formulario tiene tres campos, un botón de envío y un camino de fallo. Subir
+  los valores a la screen supone re-renderizar todo el sheet en cada pulsación
+  por un estado que nadie por encima del template puede aprovechar; dejar el
+  fallo dentro supone que el template se invente el texto de una llamada que no
+  ha hecho.
+- El reparto sigue a quién puede responder la pregunta. Los valores,
+  `isSubmitting` y si el botón es pulsable se quedan en
+  `useNewDocumentFormTemplate`; `onSubmit` recibe los valores y responde con un
+  `NewDocumentFormResponseModel` — éxito, o error con su propio `message` — y el
+  template se limita a pintarlo.
+- Un error deja los campos tal cual se escribieron para que reintentar no cueste
+  nada, y los bloquea en lugar de cambiar el formulario por un spinner, así que
+  lo que se está creando sigue legible mientras está en vuelo.
+- **Descartado** — `onSubmit: () => void` con una prop `errorMessage` aparte, la
+  forma que usa `DocumentListTemplate` para su state. Allí funciona porque la
+  screen es dueña de los documentos; aquí obligaría a la screen a sostener un
+  estado cuyo único lector es el template, y a mantenerlo al día con un envío que
+  el template ya controla.
+- **Coste** — ahora conviven dos formas de fallar: una promesa rechazada sigue
+  escapándose del template sin tocar, así que cada caller tiene que resolver sus
+  errores dentro del modelo de respuesta en vez de lanzarlos.
+- **Abierto** — qué hace el éxito más allá de limpiar los campos nunca se cerró.
+  El template no cierra el sheet, así que quien conecte `onSubmit` decide si un
+  documento creado además lo descarta.
+
+---

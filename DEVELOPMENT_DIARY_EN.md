@@ -891,3 +891,35 @@ alternative it beat and what it cost. Ordered oldest first.
   from the UI, so the badge reports the failure without offering a way out of it.
 
 ---
+
+## Let the new-document form own its fields and `onSubmit` own the outcome
+`2026-09-11` · `src/ui/templates/newDocumentFormTemplate/`
+
+> The template can hold a half-typed name, but it has no business deciding what
+> a failed creation says to the user.
+
+- The form has three fields, a submit button and a failure path. Lifting the
+  field values to the screen means a re-render of the whole sheet per keystroke
+  over state nobody above the template can use; leaving the failure inside it
+  means the template inventing wording for a call it did not make.
+- The split follows who can answer the question. Values, `isSubmitting` and
+  whether the button is pressable stay in `useNewDocumentFormTemplate`;
+  `onSubmit` takes the values and answers with a `NewDocumentFormResponseModel`
+  — success, or an error carrying its own `message` — and the template only
+  paints it.
+- An error leaves the fields exactly as typed so a retry costs nothing, and
+  locks them rather than swapping the form for a spinner, so what is being
+  created stays readable while it is in flight.
+- **Rejected** — `onSubmit: () => void` with a separate `errorMessage` prop, the
+  shape `DocumentListTemplate` uses for its state. It works there because the
+  screen owns the documents; here it would force the screen to hold a piece of
+  state whose only reader is the template, and to keep it in step with a
+  submission the template already tracks.
+- **Cost** — two ways to fail now exist side by side: a rejected promise still
+  escapes the template untouched, so every caller must resolve its own errors
+  into the response model rather than throwing them.
+- **Open** — what success does beyond clearing the fields was never settled. The
+  template does not close the sheet, so whoever wires `onSubmit` decides whether
+  a created document also dismisses it.
+
+---
