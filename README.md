@@ -1,45 +1,146 @@
-# Welcome to your Expo app 👋
+# Document CRUD & notifications
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+An [Expo](https://expo.dev) (SDK 57) React Native app: a document list with
+create, sort and list/grid layout, plus a live notification feed over WebSocket.
 
-## Get started
+> **The UI is documented in Storybook.** Every component in `src/ui/` — from
+> the icons up to the full page templates — has a story with its states laid
+> out side by side and an auto-generated props page. It is the fastest way to
+> see what this app is made of without launching it: **`yarn storybook`**.
+> [Details below](#ui-documentation--storybook).
 
-1. Install dependencies
+| Document | What it covers | |
+|---|---|---|
+| **App flow** | What the app does, screen by screen, with screenshots and what runs underneath each one | [EN](./APP_FLOW.md) · [ES](./APP_FLOW_ES.md) |
+| **Development diary** | Why it is built this way — each decision, the alternative it beat and what it cost | [EN](./DEVELOPMENT_DIARY_EN.md) · [ES](./DEVELOPMENT_DIARY_ES.md) |
 
-   ```bash
-   npm install
-   ```
+## Requirements
 
-2. Start the app
+| Tool | Needed for |
+|---|---|
+| Node 20+ and Yarn | the app |
+| [Go](https://go.dev/dl/) | the mock backend |
+| Xcode + Command Line Tools | the iOS simulator (macOS only) |
+| Android Studio (SDK + an AVD) | the Android emulator |
 
-   ```bash
-   npx expo start
-   ```
+## 1. Start the backend
 
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+The app talks to the mock server from
+[holdedlab/frontend-challenge](https://github.com/holdedlab/frontend-challenge).
+It serves both the REST endpoints and the notification WebSocket, so **nothing
+in the app works until it is running**.
 
 ```bash
-npm run reset-project
+git clone https://github.com/holdedlab/frontend-challenge.git
+cd frontend-challenge
+go run server.go -addr localhost:9090
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+Leave it running in its own terminal. The port matters: `env/local.env` points
+at `http://localhost:9090` and `ws://localhost:9090`, so a different `-addr`
+means editing `env/local.env.local` to match.
 
-### Other setup steps
+## 2. Install dependencies
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+```bash
+yarn install
+```
+
+## 3. Start the app
+
+```bash
+yarn start      # Metro, then press a / i / w to open a target
+yarn android    # boot straight into the Android emulator
+yarn ios        # boot straight into the iOS simulator
+yarn web        # browser
+```
+
+`APP_ENV` defaults to `local`, which is the only environment pointing at a real
+service — see [env/README.md](./env/README.md) for the others.
+
+### Android emulator
+
+The emulator's `localhost` is the emulator itself, not your machine, so the
+loopback URLs in `env/local.env` need a bridge:
+
+```bash
+emulator -list-avds                     # or Android Studio ▸ Device Manager
+emulator -avd <avd-name>                # boot it and wait for the home screen
+
+adb reverse tcp:9090 tcp:9090           # host:9090 reachable as localhost:9090
+
+yarn android
+```
+
+`adb reverse` is per-boot: re-run it every time the emulator restarts. If
+`emulator` is not on your `PATH`, it lives at `$ANDROID_HOME/emulator/emulator`.
+
+### iOS simulator
+
+The simulator shares the host's network, so `localhost:9090` resolves with no
+extra step:
+
+```bash
+xcrun simctl list devices available     # pick a booted or bootable device
+open -a Simulator                       # optional: yarn ios boots one anyway
+
+yarn ios
+```
+
+### Physical device
+
+Loopback is not reachable from a phone. Bind the server to your LAN
+(`go run server.go -addr 0.0.0.0:9090`) and point the app at your machine's IP
+in `env/local.env.local` (gitignored):
+
+```bash
+API_URL=http://192.168.1.42:9090
+WEB_SOCKET_URL=ws://192.168.1.42:9090
+```
+
+## UI documentation — Storybook
+
+The design system documents itself. **29 stories** cover the whole atomic-design
+ladder in `src/ui/`, and no backend, emulator or Metro bundler is involved:
+
+```bash
+yarn storybook          # http://localhost:6006
+yarn storybook:build    # static export into storybook-static/ (gitignored)
+```
+
+What you get there:
+
+- **Every component, every state, side by side.** A button's disabled and
+  pressed variants, the list as one column and as a grid, and the three page
+  templates (`documentListTemplate`, `newDocumentFormTemplate`,
+  `notificationListTemplate`) in each of their loading / error / content states
+  — states that are otherwise hard to reach by clicking through the app.
+- **A generated props page per component.** `autodocs` is on globally, so the
+  props table, its types and the JSDoc written on them are rendered for every
+  story with nothing to maintain by hand. This is the one place the project's
+  no-comments policy makes an exception for JSDoc: there it is product
+  documentation, not a comment.
+- **Live controls.** Props are editable in the panel, so a component can be
+  driven into a state without writing code.
+
+It runs on Vite + `react-native-web`, entirely separate from the Expo/Metro
+build, and **is never bundled into the app** — `yarn storybook` is the only way
+in. That separation is deliberate, and so is the fact that the components were
+built here *before* the screens existed: see
+[*Build the UI in Storybook before the screens exist*](./DEVELOPMENT_DIARY_EN.md)
+in the diary.
+
+Adding a component means adding its `index.stories.tsx` beside it — the glob in
+`.storybook/main.ts` picks up anything under `src/ui/`.
+
+## Checks
+
+```bash
+yarn lint        # ESLint is the style guide: no semicolons, arrow-function
+                 # consts, max 2 params, sorted imports, enforced port boundaries
+yarn typecheck
+yarn test
+```
 
 ## Import aliases
 
@@ -79,14 +180,7 @@ is not needed). Nothing else to touch: TypeScript, Metro and Jest all follow.
 
 ## Learn more
 
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+- [Expo documentation](https://docs.expo.dev/versions/v57.0.0/) — the exact
+  versioned docs this project is written against.
+- [Expo Router](https://docs.expo.dev/router/introduction) — routes live in
+  `src/app/`.

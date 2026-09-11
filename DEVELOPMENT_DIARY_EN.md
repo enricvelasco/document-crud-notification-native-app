@@ -7,38 +7,6 @@ alternative it beat and what it cost. Ordered oldest first.
 
 ---
 
-## Enforce the code policy in the linter instead of in review
-`2026-09-06` · `eslint.config.js`
-
-> A convention nobody runs erodes one exception at a time.
-
-- The rules this project cares about — no semicolons, every function an
-  arrow-function `const`, a hard ceiling of two parameters — are exactly the
-  kind that decay silently in review.
-- All of them are ESLint rules instead, so `yarn lint` *is* the style guide and
-  drift cannot accumulate.
-- **Rejected** — adding Prettier: half of what needs policing here is
-  architectural (`max-params`, `func-style`, restricted imports) and Prettier
-  only formats, so it would mean two tools with an opinion about the same line.
-- **Cost** — `eslint --fix` carries formatting a dedicated formatter would do
-  faster, and legitimate code occasionally needs an explicit override.
-
----
-
-## Hold ESLint at v9 while Expo's config catches up
-`2026-09-06` · `package.json`
-
-> Staying a major behind is cheaper than forking rules the framework curates.
-
-- `eslint-config-expo@57` does not load under ESLint 10.
-- Taking the new major would have meant dropping Expo's React Native rule set —
-  the part that knows about Metro, JSX and RN globals — and rebuilding it.
-- **Rejected** — hand-rolling a replacement config: it is maintenance the
-  framework already does, and it would drift from upstream immediately.
-- **Cost** — knowingly pinned to `^9` on a core tool until Expo supports 10.
-
----
-
 ## Resolve environment config at build time, then re-validate it at boot
 `2026-09-06` · `app.config.ts` · `src/config/`
 
@@ -89,25 +57,6 @@ alternative it beat and what it cost. Ordered oldest first.
   one.
 - **Cost** — four sets of native credentials to manage once this reaches store
   builds.
-
----
-
-## Write the code policy as agent skills, not as a contributing guide
-`2026-09-07` · `.claude/skills/`
-
-> Policy belongs in the tool that writes the code, not in a file someone has to
-> remember to open.
-
-- Most of this project's code is written with an AI agent, and a
-  `CONTRIBUTING.md` only helps at a moment that never coincides with typing.
-- Eleven skills carry the conventions — naming, folder structure per layer,
-  arrow functions, flat conditionals, no comments, dependency inversion — each
-  with the rule, the reasoning and ❌/✅ examples.
-- **Rejected** — leaving the rules only in the linter: a linter rejects a
-  violation but cannot express *what to do instead*, which is the part that
-  shapes a design.
-- **Cost** — a second place where policy lives, to revise whenever a convention
-  changes.
 
 ---
 
@@ -167,25 +116,6 @@ alternative it beat and what it cost. Ordered oldest first.
 
 ---
 
-## Make the port boundary a lint error, not a convention
-`2026-09-08` · `eslint.config.js`
-
-> A port nobody enforces decays on the first direct import.
-
-- That import is invisible in review because it looks exactly like every other
-  import in the file.
-- `no-restricted-imports` names each wrapped library and the port to use
-  instead; `no-restricted-globals` blocks bare `fetch`.
-- Each adapter directory re-opens only the one library it owns, so the
-  architecture fails the build instead of degrading quietly.
-- **Rejected** — trusting the skills alone: they guide the agent writing new
-  code but do nothing about code pasted in from elsewhere.
-- **Cost** — ESLint's flat config merges rules by name, so each adapter block
-  restates the full list minus its own library; a fifth wrapped library means
-  editing five places.
-
----
-
 ## Translate API payloads into domain models at the edge
 `2026-09-08` · `src/core/domains/document/`
 
@@ -232,23 +162,6 @@ alternative it beat and what it cost. Ordered oldest first.
   platform concern, reachable through a translation API.
 - **Cost** — two ports and a wiring step between them where a merged service
   would have had none.
-
----
-
-## Derive the import-alias list from `tsconfig.json`
-`2026-09-08` · `scripts/import-aliases.js` · `eslint.config.js`
-
-> `@core` is indistinguishable from a scoped npm package by shape alone.
-
-- The import sorter filed project aliases under third-party imports, so every
-  file opened with local modules pretending to be dependencies.
-- The ESLint config builds its alias patterns by reading the `paths` map out of
-  `tsconfig.json`, which stays the one place an alias is declared.
-- **Rejected** — listing the aliases again in the lint config: the two lists
-  would be equal only until the next alias, and the failure would be a silently
-  mis-sorted import rather than an error.
-- **Cost** — a build-time coupling between the lint config and `tsconfig.json`,
-  and a script that has to stay outside the linted set.
 
 ---
 
@@ -315,8 +228,7 @@ alternative it beat and what it cost. Ordered oldest first.
 - Inline icons mean SVG path data pasted into feature code, re-pasted at the
   next use, diverging in size and colour from the copy beside it.
 - Each icon is a component under `src/ui/atoms/icons/` taking our own props, and
-  the lint config makes that directory the only place `react-native-svg` may be
-  imported.
+  that directory is the only place `react-native-svg` is imported.
 - **Rejected** — an icon font: it adds an asset to load and gives up per-icon
   control of stroke and colour.
 - **Cost** — a component per icon, written by hand.
@@ -329,20 +241,15 @@ alternative it beat and what it cost. Ordered oldest first.
 > Persistence is a replaceable implementation, so the app asks to store a value
 > under a key and never learns who answers.
 
-- Nothing in the app persisted anything yet, so the first storage call was the
-  moment to decide whether `@react-native-async-storage/async-storage` gets
-  imported once or everywhere.
 - `src/services/storage/` exposes `getItem` / `setItem` / `removeItem` /
   `clear` over our own `StorageServiceModel`, and `asyncStorageAdapter.ts` is
-  the only file allowed to import the library — held by the same
-  `no-restricted-imports` list that already guards the picker, localization,
-  i18n and SVG.
+  the one file that imports the library.
 - The port speaks values, not strings: the adapter owns the
   `JSON.stringify` / `JSON.parse`, so an unreadable stored value arrives as a
   `StorageError` at the boundary instead of a `SyntaxError` inside a screen.
 - **Rejected** — a port that stores strings and leaves parsing to its callers:
-  the same parse and its `try`/`catch` then get rewritten at every call site,
-  each one free to disagree about what a corrupt value means.
+  every call site then carries its own `JSON.parse` in a `try`/`catch` and
+  decides for itself what a corrupt value means.
 - **Cost** — `getItem<TValue>` casts whatever comes back, so a shape change is
   caught where the value is used rather than where it is read.
 - **Open** — async-storage was picked over `expo-sqlite/kv-store` (Expo's
@@ -635,9 +542,9 @@ alternative it beat and what it cost. Ordered oldest first.
 - Everything prefixed `to*` in this repo is a mapper, so the name told a reader
   to expect data and handed them a component instead.
 - Promoting it to a `ListRefreshControl` component was the obvious fix and the
-  wrong one: `refreshControl` takes an element that Android clones as the scroll
-  view's parent, so the wrapper would have to forward the `style` and `children`
-  React Native injects, and the call site would need a cast.
+  wrong one: the element Android clones as the scroll view's parent has to be
+  the real control, so a wrapper would have to forward the `style` and
+  `children` React Native injects, and the call site would need a cast.
 - It is now a ternary inside `List` choosing between an element and `undefined`,
   which is a choice between two values rather than a branch worth a file.
 - **Rejected** — keeping the extraction under a `get*` name: it satisfies the
@@ -799,8 +706,8 @@ alternative it beat and what it cost. Ordered oldest first.
 - The start/stop lifecycle lives in `createNotificationStreamController`, a
   plain closure in `resources/services.ts` holding one subscription: `start` is
   a no-op while a stream is open, `stop` closes and clears it, and starting
-  again opens a fresh one. That makes the semantics testable with no renderer,
-  and it makes the effect's double-invoke under StrictMode a non-event.
+  again opens a fresh one. That also makes the effect's double-invoke under
+  StrictMode a non-event.
 - This supersedes the cost noted in the previous entry — the provider now holds
   state, so it is a context in substance and not only in placement.
 - **Rejected** — exporting `NotificationContext` for screens to consume
@@ -855,13 +762,12 @@ alternative it beat and what it cost. Ordered oldest first.
   scope slot and hoist identically into the same temporal dead zone, so nothing
   here runs faster. What changes is that a name means one thing for its whole
   scope, and that mutation has to be spelled `state.x` where it happens.
-- **Rejected** — leaning on `prefer-const`: it only flags a `let` that is never
-  reassigned, which is the case nobody gets wrong, so it would leave untouched
-  every binding the policy is actually about.
-- **Cost** — the rule is not in `eslint.config.js` yet, because switching it on
-  fails the websocket and language adapters that predate it. Until those are
-  reshaped this policy rides on review, which is the thing this project decided
-  in its first entry not to rely on.
+- **Rejected** — flagging only a `let` that is never reassigned, which is the
+  case nobody gets wrong: it would leave untouched every binding the policy is
+  actually about.
+- **Cost** — the websocket and language adapters predate the rule and still
+  hold state in loose bindings, so until they are reshaped the policy is
+  unenforced and two shapes of closure coexist in `src/`.
 
 ---
 
@@ -1082,7 +988,7 @@ alternative it beat and what it cost. Ordered oldest first.
   `NewDocumentFormSubmitType`, and does two things with the action's result —
   translates it into the template's response model, and closes the sheet when it
   says the document was created. Both live in `resources/`, so the hook stays
-  wiring and the behaviour stays testable without a renderer.
+  wiring.
 - **Rejected** — reusing `ViewSectionType` for the outcome: its `aborted` branch
   is meaningless for a submit, and an `ok` case that carries no data would have
   needed a `void` type parameter at every call site.
@@ -1118,15 +1024,13 @@ alternative it beat and what it cost. Ordered oldest first.
 ---
 
 ## Read the file through a port instead of letting the action import Expo
-`2026-09-11` · `src/services/fileReader/` · `eslint.config.js`
+`2026-09-11` · `src/services/fileReader/` · `src/core/actions/createDocumentAction/`
 
 > The action's job is to orchestrate. Knowing that base64 comes from
 > `new File(uri).base64()` is not orchestration.
 
 - `@services/fileReader` exposes one method, `readAsBase64(uri)`, and its Expo
-  adapter is the only file in the project allowed to import `expo-file-system` —
-  enforced by the same `no-restricted-imports` block that already guards the
-  picker, storage, localization and i18n libraries.
+  adapter is the one file allowed to import `expo-file-system`.
 - Failures come back as `FileReaderError` naming the uri, so the action never
   sees an Expo error type.
 - Getting the uri there at all meant `InputDocument` had to stop reporting a file
@@ -1135,9 +1039,9 @@ alternative it beat and what it cost. Ordered oldest first.
 - **Rejected** — faking the base64 too, since the endpoint is already faked: the
   encoding is the one part of this flow that is real work, and a fake would have
   hidden whether the picker's cached uri is readable at all.
-- **Cost** — a new runtime dependency (`expo-file-system@57`), a fifth entry in
-  every restricted-import list, and the whole file is held in memory as a base64
-  string, which will not hold for large attachments.
+- **Cost** — a new runtime dependency (`expo-file-system@57`), a fifth library
+  confined to a single adapter, and the whole file is held in memory as a
+  base64 string, which will not hold for large attachments.
 
 ---
 
@@ -1312,17 +1216,16 @@ alternative it beat and what it cost. Ordered oldest first.
 - `fail` sits on the stream controller and not in the hook, because the
   controller owns the failure counter: it pins the count at the limit, so a late
   error from the socket it just closed cannot report the same outage twice.
-- Coming back online clears the error during render, where it is derived state
-  and not a side effect; the effect then opens a fresh socket.
+- Dropping the network normally fails the stream three times first and leaves
+  `isError` set, so coming back online clears it during render, where it is
+  derived state and not a side effect — otherwise the feed would return healthy
+  under a stale "disconnected" banner. The effect then opens a fresh socket.
 - Losing the network is a state the app plans for now, so the stream reports its
   failures with `console.warn` rather than `console.error`: LogBox was painting a
   red crash box in dev for a condition that ends in a designed notice.
 - `startSubscription` — the reconnect button on the notification page — refuses
   to run while offline, so the one public way back into the stream cannot reopen
   it underneath the notice.
-- Dropping the network normally fails the stream three times first and leaves
-  `isError` set, so the hook clears it on the online transition during render —
-  otherwise the feed would come back healthy under a stale "disconnected" banner.
 - Retry asks `networkService.refresh()` for a fresh reading and only calls
   `refreshCurrentRoute` once it comes back online; that `router.replace`s the
   current pathname, and replace always mounts a new route key, so the screen
