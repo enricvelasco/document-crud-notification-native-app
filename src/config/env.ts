@@ -1,6 +1,7 @@
 import Constants from 'expo-constants'
 
 import { APP_ENVS, type AppEnv, isAppEnv } from './app-env'
+import { withAndroidEmulatorHost } from './resources/services'
 
 export interface AppConfig {
   appEnv: AppEnv
@@ -36,8 +37,8 @@ const readAppConfig = (): AppConfig => {
 
   return {
     appEnv: raw.appEnv,
-    apiUrl: raw.apiUrl,
-    webSocketUrl: raw.webSocketUrl,
+    apiUrl: withAndroidEmulatorHost(raw.apiUrl),
+    webSocketUrl: withAndroidEmulatorHost(raw.webSocketUrl),
     apiTimeoutMs: typeof raw.apiTimeoutMs === 'number' ? raw.apiTimeoutMs : DEFAULT_TIMEOUT_MS,
     enableDevTools: raw.enableDevTools === true,
     sentryDsn: typeof raw.sentryDsn === 'string' ? raw.sentryDsn : '',
