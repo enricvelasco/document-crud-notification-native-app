@@ -161,10 +161,41 @@ module.exports = defineConfig([
   },
 
   {
-    // --- the http port is the only way to reach the network ---
-    // Only its adapter may touch the transport library/global directly.
+    // --- the http and webSocket ports are the only way to reach the network ---
+    // Only their adapters may touch a transport global directly. Flat config
+    // merges rules by name, so every restricted global lives in this single
+    // entry; the blocks below re-declare the whole list minus the one global
+    // that adapter is allowed to use.
     files: ['src/**/*.ts', 'src/**/*.tsx'],
-    ignores: ['src/services/http/adapters/**'],
+    rules: {
+      'no-restricted-globals': [
+        'error',
+        {
+          name: 'fetch',
+          message: 'Import @services/http instead — only its adapter may use the transport directly.',
+        },
+        {
+          name: 'WebSocket',
+          message: 'Import @services/webSocket instead — only its adapter may use the transport directly.',
+        },
+      ],
+    },
+  },
+
+  {
+    // --- the http adapter is the one place fetch is allowed ---
+    files: ['src/services/http/adapters/**'],
+    rules: {
+      'no-restricted-globals': ['error', {
+        name: 'WebSocket',
+        message: 'Import @services/webSocket instead — only its adapter may use the transport directly.',
+      }],
+    },
+  },
+
+  {
+    // --- the webSocket adapter is the one place WebSocket is allowed ---
+    files: ['src/services/webSocket/adapters/**'],
     rules: {
       'no-restricted-globals': ['error', {
         name: 'fetch',

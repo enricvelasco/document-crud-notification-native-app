@@ -645,3 +645,64 @@ alternative it beat and what it cost. Ordered oldest first.
   control it grows will push toward the same question again.
 
 ---
+
+## Own the reconnection inside the WebSocket port, not in the screens
+`2026-09-11` · `src/services/webSocket/`
+
+> A socket that drops is ordinary traffic, not an error every consumer has to
+> learn to retry.
+
+- The http port answers one request and is done; a socket outlives the screen
+  that opened it and gets closed by any sleep, tunnel or network switch.
+- `createNativeWebSocketAdapter` reopens on an unexpected close with a delay
+  that doubles up to `maxReconnectDelayMs`, resets the attempt count once a
+  connection opens, and gives up for good when the caller calls `close()`.
+- Consumers see the retry only as an `onStatusChange` of `Reconnecting`, so a
+  screen paints a banner instead of owning a timer.
+- **Rejected** — exposing raw connect/disconnect and letting each caller retry:
+  every consumer would reimplement the same backoff, and two screens would
+  disagree on how many attempts is too many.
+- **Cost** — a connection retries whether or not its caller wants it, and the
+  attempt budget is fixed for the whole app rather than per connection.
+
+---
+
+## Hand back a connection handle and push messages through callbacks
+`2026-09-11` · `src/services/webSocket/models/`
+
+> A stream that never ends has no promise to resolve.
+
+- `httpService.get` returns `Promise<TResponse>` because a request has exactly
+  one answer; a subscription has none, or thousands.
+- `connect` returns a `WebSocketConnectionModel` — `send` and `close` —
+  synchronously, and messages, status and errors arrive on `onMessage`,
+  `onStatusChange` and `onError`.
+- The handle exists before the socket opens, so the caller can always close it:
+  during the handshake, or while a reconnection is still pending.
+- **Rejected** — resolving a promise on open: it leaves the caller nothing to
+  cancel during the handshake, and it cannot report a later reconnection because
+  the promise has already settled.
+- **Cost** — a `send` before the socket is open throws instead of queueing, so
+  the caller has to watch the status.
+
+---
+
+## Put the socket URL in the env files and the reconnection knobs in code
+`2026-09-11` · `env/` · `src/services/webSocket/constants.ts`
+
+> An address changes per environment; a backoff curve is a decision about the
+> app.
+
+- `WEB_SOCKET_URL` joins `API_URL` in every `env/<name>.env` and is validated at
+  boot by `readAppConfig` the same way, so a build missing it crashes instead of
+  quietly pointing somewhere else.
+- The connection timeout, the base delay, the delay ceiling and the attempt
+  budget live in `src/services/webSocket/constants.ts`, where the port assembles
+  its own config.
+- **Rejected** — four more variables in every environment file: none of them
+  would ever differ between local and prod, and each would need its own
+  validation and its own default.
+- **Cost** — retuning the backoff is a code change and a release, not an env
+  edit.
+
+---

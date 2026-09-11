@@ -5,6 +5,7 @@ import { APP_ENVS, type AppEnv, isAppEnv } from './app-env'
 export interface AppConfig {
   appEnv: AppEnv
   apiUrl: string
+  webSocketUrl: string
   apiTimeoutMs: number
   enableDevTools: boolean
   sentryDsn: string
@@ -29,10 +30,14 @@ const readAppConfig = (): AppConfig => {
   if (typeof raw.apiUrl !== 'string' || raw.apiUrl === '') {
     throw new Error('App config is missing a non-empty "apiUrl".')
   }
+  if (typeof raw.webSocketUrl !== 'string' || raw.webSocketUrl === '') {
+    throw new Error('App config is missing a non-empty "webSocketUrl".')
+  }
 
   return {
     appEnv: raw.appEnv,
     apiUrl: raw.apiUrl,
+    webSocketUrl: raw.webSocketUrl,
     apiTimeoutMs: typeof raw.apiTimeoutMs === 'number' ? raw.apiTimeoutMs : DEFAULT_TIMEOUT_MS,
     enableDevTools: raw.enableDevTools === true,
     sentryDsn: typeof raw.sentryDsn === 'string' ? raw.sentryDsn : '',

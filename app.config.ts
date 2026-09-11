@@ -21,6 +21,7 @@ const DEFAULT_TIMEOUT_MS = 15000
 interface AppRuntimeConfig {
   appEnv: AppEnv
   apiUrl: string
+  webSocketUrl: string
   apiTimeoutMs: number
   enableDevTools: boolean
   sentryDsn: string
@@ -98,6 +99,7 @@ const buildRuntimeConfig = (appEnv: AppEnv, vars: EnvVars): AppRuntimeConfig => 
   return {
     appEnv,
     apiUrl: need('API_URL'),
+    webSocketUrl: need('WEB_SOCKET_URL'),
     apiTimeoutMs: Number.isFinite(timeout) && timeout > 0 ? timeout : DEFAULT_TIMEOUT_MS,
     enableDevTools: (vars.ENABLE_DEV_TOOLS ?? String(appEnv !== 'prod')) === 'true',
     sentryDsn: vars.SENTRY_DSN ?? '',

@@ -681,3 +681,67 @@ a más reciente.
   próximo control que le crezca empujará otra vez hacia la misma pregunta.
 
 ---
+
+## Que la reconexión viva en el port de WebSocket y no en las pantallas
+`2026-09-11` · `src/services/webSocket/`
+
+> Que un socket se caiga es tráfico normal, no un error que cada consumidor
+> tenga que aprender a reintentar.
+
+- El port de http responde una petición y termina; un socket sobrevive a la
+  pantalla que lo abrió y lo cierra cualquier suspensión, túnel o cambio de red.
+- `createNativeWebSocketAdapter` reabre ante un cierre inesperado con un retardo
+  que se dobla hasta `maxReconnectDelayMs`, reinicia la cuenta de intentos en
+  cuanto una conexión se abre, y se rinde del todo cuando el llamante invoca
+  `close()`.
+- Los consumidores solo ven el reintento como un `onStatusChange` de
+  `Reconnecting`, así que una pantalla pinta un aviso en lugar de gestionar un
+  temporizador.
+- **Descartado** — exponer connect/disconnect en crudo y dejar que cada llamante
+  reintente: cada consumidor reimplementaría el mismo backoff, y dos pantallas
+  discreparían sobre cuántos intentos son demasiados.
+- **Coste** — una conexión reintenta quiera o no su llamante, y el presupuesto
+  de intentos es fijo para toda la app en vez de por conexión.
+
+---
+
+## Devolver un handle de conexión y empujar los mensajes por callbacks
+`2026-09-11` · `src/services/webSocket/models/`
+
+> Un stream que no termina nunca no tiene promesa que resolver.
+
+- `httpService.get` devuelve `Promise<TResponse>` porque una petición tiene
+  exactamente una respuesta; una suscripción no tiene ninguna, o tiene miles.
+- `connect` devuelve un `WebSocketConnectionModel` — `send` y `close` — de forma
+  síncrona, y los mensajes, el estado y los errores llegan por `onMessage`,
+  `onStatusChange` y `onError`.
+- El handle existe antes de que el socket se abra, así que el llamante siempre
+  puede cerrarlo: durante el handshake, o mientras una reconexión sigue
+  pendiente.
+- **Descartado** — resolver una promesa al abrir: deja al llamante sin nada que
+  cancelar durante el handshake, y no puede informar de una reconexión posterior
+  porque la promesa ya se resolvió.
+- **Coste** — un `send` antes de que el socket esté abierto lanza en vez de
+  encolar, así que el llamante tiene que mirar el estado.
+
+---
+
+## La URL del socket en los env y los parámetros de reconexión en código
+`2026-09-11` · `env/` · `src/services/webSocket/constants.ts`
+
+> Una dirección cambia con el entorno; una curva de backoff es una decisión
+> sobre la app.
+
+- `WEB_SOCKET_URL` acompaña a `API_URL` en cada `env/<name>.env` y `readAppConfig`
+  la valida al arrancar igual que a la otra, así que un build sin ella revienta
+  en lugar de apuntar en silencio a otro sitio.
+- El timeout de conexión, el retardo base, su techo y el presupuesto de intentos
+  viven en `src/services/webSocket/constants.ts`, donde el port arma su propia
+  config.
+- **Descartado** — cuatro variables más en cada archivo de entorno: ninguna
+  llegaría a diferir entre local y prod, y cada una necesitaría su validación y
+  su valor por defecto.
+- **Coste** — reajustar el backoff es un cambio de código y una release, no una
+  edición de env.
+
+---
