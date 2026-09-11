@@ -1,1 +1,1 @@
-export { DocumentListScreen as default } from '@screens/DocumentListScreen'
+export { DocumentListScreen as default } from '@screens/documentListScreen'

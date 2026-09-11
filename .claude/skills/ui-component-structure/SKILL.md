@@ -3,7 +3,7 @@ name: ui-component-structure
 description: >-
   Project architecture policy for UI components under `src/ui/`, organised by
   atomic design (`atoms/`, `molecules/`, `organisms/`). Each component is a
-  PascalCase folder containing `index.tsx` (the component itself), `styles.ts`,
+  camelCase folder containing `index.tsx` (the component itself), `styles.ts`,
   an optional `resources/` folder holding a `use<ComponentName>` hook plus that
   hook's own utils/constants/services when the component needs logic, and an
   optional `components/` folder for subcomponents that make no sense outside the
@@ -56,8 +56,11 @@ src/ui/<layer>/<ComponentName>/
         └── styles.ts
 ```
 
-Folder and component name: **PascalCase, descriptive** — `SubmitButton/`,
-`DocumentListRow/`, not `Btn/` or `Item/`. Props type is `<ComponentName>Props`.
+Folder: **camelCase, descriptive** — `submitButton/`, `documentListRow/`, not
+`btn/` or `item/`. Component: the same name in **PascalCase** —
+`SubmitButton`. Props type is `<ComponentName>Props`. Only identifiers take the
+capital; every folder in this codebase is camelCase (see the
+naming-conventions policy).
 
 ## `index.tsx` — markup only
 
@@ -69,7 +72,7 @@ flat-conditionals policy); use the `no-typescript-enum` `as const` pattern for
 variant props.
 
 ```tsx
-// src/ui/atoms/SubmitButton/index.tsx  — presentational, no logic
+// src/ui/atoms/submitButton/index.tsx  — presentational, no logic
 import { Pressable, Text } from 'react-native'
 
 import { styles } from './styles'
@@ -88,10 +91,10 @@ export const SubmitButton = ({ label, disabled = false, onPress }: SubmitButtonP
 ```
 
 ```tsx
-// src/ui/molecules/SearchField/index.tsx  — logic lives in the hook
+// src/ui/molecules/searchField/index.tsx  — logic lives in the hook
 import { TextInput } from 'react-native'
 
-import { SubmitButton } from '@/ui/atoms/SubmitButton'
+import { SubmitButton } from '@ui/atoms/submitButton'
 
 import { useSearchField } from './resources/useSearchField'
 import { styles } from './styles'
@@ -126,7 +129,7 @@ render. It may use its own siblings in `resources/`:
   `src/services/`; data access still goes through a domain.
 
 ```ts
-// src/ui/molecules/SearchField/resources/useSearchField.ts
+// src/ui/molecules/searchField/resources/useSearchField.ts
 import { useState } from 'react'
 
 import { MIN_QUERY_LENGTH } from './constants'
@@ -166,7 +169,7 @@ Every component keeps its `StyleSheet` in `styles.ts`, exported as `styles`, so
 `index.tsx` is markup and props with no style block at the bottom.
 
 ```ts
-// src/ui/atoms/SubmitButton/styles.ts
+// src/ui/atoms/submitButton/styles.ts
 import { StyleSheet } from 'react-native'
 
 import { Spacing } from '@/constants/theme'
@@ -189,7 +192,7 @@ Values that describe the design system (colours, spacing, fonts) come from
 
 ## What a UI component must not do
 
-- Import from `@/core/domains/...` or `@/views/...` — components receive everything
+- Import from `@core/domains/...` or `@core/views/...` — components receive everything
   via props; data fetching is the view's job.
 - Hold logic inline in `index.tsx` when it is more than a one-liner — move it to
   `resources/use<ComponentName>.ts`.
@@ -202,4 +205,5 @@ No semicolons, 2-space indent, single quotes, sorted imports, max 2 params
 (bundle extra props by passing the props object). The component and its hook are
 `const` arrow functions (see the arrow-function-declarations policy) — in a
 `.tsx` file a generic one needs the disambiguating comma, `<T,>`. Component
-folders and names are PascalCase; hook files are `use<ComponentName>.ts`.
+folders are camelCase and component names are PascalCase; hook files are
+`use<ComponentName>.ts`.

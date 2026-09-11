@@ -514,3 +514,73 @@ a más reciente.
   ganarse uno nuevo en vez de escribirse donde hace falta.
 
 ---
+
+## Colocar las views en `src/core/views/`, no junto a las screens
+`2026-09-11` · `src/core/views/` · `.claude/skills/view-structure`
+
+> Una view orquesta domains y no pinta nada, así que le toca estar donde están
+> los domains.
+
+- Una capa se coloca por lo que hace, no por quién la consume. Una view
+  orquesta domains y no pinta nada, así que es trabajo de datos — y `src/views/`
+  le daba una dirección de presentación, hermana de `src/screens/` y `src/ui/`,
+  a una carpeta que tiene prohibido contener JSX.
+- Las views viven ahora en `src/core/views/<Entity><Purpose>View/`, al lado de
+  `src/core/domains/`, alcanzables por el alias `@core/*` que ya existe en
+  `tsconfig.json`, Metro y Jest.
+- Las cuatro skills que nombraban la ruta antigua se reescribieron en el mismo
+  cambio, para que la política escrita y el árbol no puedan separarse.
+- **Descartado** — mantener `src/views/` y registrar un alias `@views/*`
+  nuevo: parte en dos mitades la capa de datos a lo ancho del árbol y añade un
+  alias a tres configuraciones para decir menos de lo que ya dice `core`.
+- **Coste** — `core` ya no se lee como «los domains»: ahora contiene dos tipos
+  de cosa, y dónde cae la frontera hay que aprenderlo en vez de deducirlo.
+
+---
+
+## Propagar el abort signal desde la screen hasta el `fetch`
+`2026-09-11` · `src/services/http/` · `src/core/` · `src/screens/DocumentListScreen/`
+
+> Una cancelación que se queda en la view no cancela nada — solo el transporte
+> puede abandonar una petición en vuelo.
+
+- La screen es dueña del `AbortController` porque es dueña del tiempo de vida
+  del montaje, pero el signal solo hace trabajo en el `fetch`, cuatro capas más
+  abajo.
+- `HttpServiceModel.get` ganó un argumento `options` que lleva el signal;
+  `getDocumentList(signal)` y `loadDocumentListView(signal)` son conductos
+  puros que lo reenvían y no lo usan para nada propio.
+- El adapter conserva su controller para el timeout y engancha en él el signal
+  de quien llama, de modo que aborta la petición el primero que dispare sin que
+  ninguno de los dos mecanismos tenga que conocer al otro.
+- **Descartado** — proteger el `setState` en la screen y dejar que la petición
+  termine: calla el aviso mientras la conexión, el parseo y el mapeo siguen
+  ocurriendo para una pantalla que ya no mira nadie.
+- **Coste** — todo repositorio que quiera ser cancelable tiene que aceptar y
+  reenviar un signal que él mismo nunca lee.
+
+---
+
+## Dar tipo de error propio al abort para que salir de una pantalla no sea un fallo
+`2026-09-11` · `src/services/http/models/` · `src/core/views/DocumentListView/`
+
+> Irse de una pantalla no es un error, y desde luego no hay que reportarlo como
+> un timeout.
+
+- El adapter mapeaba cualquier `AbortError` a `HttpErrorTypes.Timeout`, así que
+  cerrar la lista registraba «Request to /documents timed out» — un diagnóstico
+  sencillamente falso, y del tipo que manda a alguien a buscar un problema de
+  red que no existe.
+- `HttpErrorTypes.Aborted` separa la cancelación de quien llama del timeout
+  propio del adapter; cuál de los dos disparó se decide preguntando si el
+  signal de quien llama es el que está abortado.
+- La view lo sube como un tercer estado de sección, `Aborted`, junto a `Ok` y
+  `Error`, de forma que la screen sale antes en vez de loguear y pintar un
+  error sobre una pantalla que se está yendo.
+- **Descartado** — dejar que el abort caiga como un rechazo cualquiera: sale
+  más barato, pero llena la consola de fallos durante la navegación normal, que
+  es la manera de que los fallos de verdad dejen de leerse.
+- **Coste** — una tercera rama en todo consumidor de una sección de view, sobre
+  las dos que el patrón ya tenía.
+
+---

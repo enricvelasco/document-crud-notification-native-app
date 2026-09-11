@@ -64,7 +64,18 @@ describe('getDocumentList', () => {
 
     await getDocumentList()
 
-    expect(httpServiceGetMock).toHaveBeenCalledWith('/documents')
+    expect(httpServiceGetMock).toHaveBeenCalledWith('/documents', { signal: undefined })
+  })
+
+  it('forwards the abort signal to the transport', async () => {
+    const abortController = new AbortController()
+    httpServiceGetMock.mockResolvedValue(documentListPayloadMock)
+
+    await getDocumentList(abortController.signal)
+
+    expect(httpServiceGetMock).toHaveBeenCalledWith('/documents', {
+      signal: abortController.signal,
+    })
   })
 
   it('returns the mapped document list inside the response model', async () => {

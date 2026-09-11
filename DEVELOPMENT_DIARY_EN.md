@@ -483,3 +483,72 @@ alternative it beat and what it cost. Ordered oldest first.
   written where it is needed.
 
 ---
+
+## Put views under `src/core/views/`, not beside the screens
+`2026-09-11` · `src/core/views/` · `.claude/skills/view-structure`
+
+> A view orchestrates domains and never renders anything, so it belongs where
+> the domains are.
+
+- A layer is placed by what it does, not by what consumes it. A view
+  orchestrates domains and paints nothing, so it is data work — and `src/views/`
+  gave it a presentation address, sibling to `src/screens/` and `src/ui/`, for
+  a folder that is forbidden to contain JSX.
+- Views now sit at `src/core/views/<Entity><Purpose>View/`, next to
+  `src/core/domains/`, reachable through the `@core/*` alias that already
+  exists in `tsconfig.json`, Metro and Jest.
+- The four skills that named the old path were rewritten in the same change, so
+  the written policy and the tree cannot drift apart.
+- **Rejected** — keeping `src/views/` and registering a new `@views/*` alias:
+  it splits the two halves of the data layer across the tree and adds an alias
+  to three configs to say less than `core` already says.
+- **Cost** — `core` no longer reads as "the domains": it now holds two kinds of
+  thing, and where the boundary falls has to be learned rather than guessed.
+
+---
+
+## Thread the abort signal from the screen down to `fetch`
+`2026-09-11` · `src/services/http/` · `src/core/` · `src/screens/DocumentListScreen/`
+
+> A cancellation that stops at the view cancels nothing — only the transport can
+> abandon a request in flight.
+
+- The screen owns the `AbortController` because it owns the mount lifetime, but
+  the signal only does work at the `fetch` call four layers below it.
+- `HttpServiceModel.get` grew an `options` argument carrying the signal;
+  `getDocumentList(signal)` and `loadDocumentListView(signal)` are pure
+  conduits that forward it and use it for nothing themselves.
+- The adapter keeps its own controller for the timeout and links the caller's
+  signal into it, so whichever fires first aborts the request and neither
+  mechanism has to know about the other.
+- **Rejected** — guarding `setState` in the screen and letting the request run
+  to completion: it silences the warning while the connection, the parse and
+  the mapping all still happen for a screen nobody is looking at.
+- **Cost** — every repository that wants to be cancellable has to accept and
+  forward a signal it never reads itself.
+
+---
+
+## Give an aborted request its own error type so leaving a screen is not a failure
+`2026-09-11` · `src/services/http/models/` · `src/core/views/DocumentListView/`
+
+> Navigating away is not an error, and it should certainly not be reported as a
+> timeout.
+
+- The adapter mapped every `AbortError` to `HttpErrorTypes.Timeout`, so closing
+  the list logged "Request to /documents timed out" — a diagnosis that is
+  simply false, and the kind that sends someone hunting a network problem that
+  does not exist.
+- `HttpErrorTypes.Aborted` separates the caller's cancellation from the
+  adapter's own timeout; which one fired is decided by asking whether the
+  caller's signal is the aborted one.
+- The view raises this as a third section status, `Aborted`, beside `Ok` and
+  `Error`, so the screen returns early instead of logging and painting an error
+  over a screen that is going away.
+- **Rejected** — letting the abort fall through as an ordinary rejection:
+  cheaper, but it fills the console with failures during normal navigation,
+  which is how real failures stop being read.
+- **Cost** — a third branch in every consumer of a view section, on top of the
+  two the pattern already had.
+
+---
