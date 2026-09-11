@@ -1,4 +1,10 @@
-import type { DocumentListPayloadType, DocumentListType, GetDocumentListResponseModel } from '../models'
+import type {
+  CreateDocumentModel,
+  CreateDocumentPayloadModel,
+  DocumentListPayloadType,
+  DocumentListType,
+  GetDocumentListResponseModel,
+} from '../models'
 
 export const documentListPayloadMock: DocumentListPayloadType = [
   {
@@ -146,4 +152,18 @@ export const documentListMock: DocumentListType = [
 
 export const getDocumentListResponseMock: GetDocumentListResponseModel = {
   documents: documentListMock,
+}
+
+export const createDocumentMock: CreateDocumentModel = {
+  name: 'Service contract',
+  version: '1.0.0',
+  fileBase64: 'JVBERi0xLjQK',
+  fileName: 'service-contract.pdf',
+}
+
+export const createDocumentPayloadMock: CreateDocumentPayloadModel = {
+  name: 'Service contract',
+  version: '1.0.0',
+  file_base_64: 'JVBERi0xLjQK',
+  file_name: 'service-contract.pdf',
 }

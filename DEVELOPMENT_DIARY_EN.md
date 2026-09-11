@@ -1059,3 +1059,82 @@ alternative it beat and what it cost. Ordered oldest first.
   second detent (`[0.75, 1]`) is the lever if it does not.
 
 ---
+
+## Add an action layer as the write-side counterpart of a view
+`2026-09-11` · `src/core/actions/createDocumentAction/`
+
+> A view answers "what does this screen paint on load". Nothing answered "what
+> happens when this screen submits".
+
+- Creating a document is three steps in a row — read the picked file, encode it,
+  post it — and each can fail with a different message. Putting that in the
+  screen's hook would make the screen orchestrate domains; putting it in the
+  domain would make a repository read the filesystem.
+- `src/core/actions/` mirrors `src/core/views/` exactly: one folder per
+  operation, an entry point, a mapper folder named for the direction it travels,
+  models, mocks and a test. The difference is the direction — a view fans out
+  with `Promise.allSettled` and returns per-section state, an action is a single
+  sequence and returns one `ActionResultType` (`ok`, or `error` with a
+  translated message and the raw cause).
+- The screen keeps its shape: `documentNewScreen` still hands the template a
+  `NewDocumentFormSubmitType`, and does two things with the action's result —
+  translates it into the template's response model, and closes the sheet when it
+  says the document was created. Both live in `resources/`, so the hook stays
+  wiring and the behaviour stays testable without a renderer.
+- **Rejected** — reusing `ViewSectionType` for the outcome: its `aborted` branch
+  is meaningless for a submit, and an `ok` case that carries no data would have
+  needed a `void` type parameter at every call site.
+- **Cost** — a second status union (`ActionStatusTypes`) living alongside
+  `ViewSectionStatusTypes`, and a second folder convention to learn.
+
+---
+
+## Simulate the create endpoint inside the repository, not above it
+`2026-09-11` · `src/core/domains/document/repositories/createDocument.ts`
+
+> The endpoint does not exist yet. Everything that depends on its *shape* can
+> still be built and tested today.
+
+- `createDocument` maps the model to the `{name, version, file_base_64,
+  file_name}` payload the API will take, then awaits a 2000 ms stand-in for the
+  request. The real call sits directly beneath it, commented, taking the same
+  `payload` variable — so landing the endpoint is deleting two lines and
+  uncommenting two.
+- The delay is not decoration: it is the only reason the form's disabled fields
+  and `Submitting…` label can be seen working before there is a server.
+- Keeping the simulation *inside* the repository means the action, the screen
+  and their tests are written against the final signature. Nothing above the
+  domain knows the endpoint is missing.
+- **Rejected** — stubbing at the action or screen level: the payload mapper
+  would then have had no caller, and every layer above would have to be rewritten
+  once the endpoint landed.
+- **Cost** — commented-out code in `src/`, which the project's own policy
+  otherwise forbids; a `DocumentError` branch no test can reach honestly, since
+  the stand-in never rejects; and `@services/http` has no `post` yet, so the
+  commented line will not compile as written until it does.
+
+---
+
+## Read the file through a port instead of letting the action import Expo
+`2026-09-11` · `src/services/fileReader/` · `eslint.config.js`
+
+> The action's job is to orchestrate. Knowing that base64 comes from
+> `new File(uri).base64()` is not orchestration.
+
+- `@services/fileReader` exposes one method, `readAsBase64(uri)`, and its Expo
+  adapter is the only file in the project allowed to import `expo-file-system` —
+  enforced by the same `no-restricted-imports` block that already guards the
+  picker, storage, localization and i18n libraries.
+- Failures come back as `FileReaderError` naming the uri, so the action never
+  sees an Expo error type.
+- Getting the uri there at all meant `InputDocument` had to stop reporting a file
+  *name* and start reporting the whole `PickedDocumentModel`; the form now keeps
+  `fileName` for what it paints and `fileUri` for what it sends.
+- **Rejected** — faking the base64 too, since the endpoint is already faked: the
+  encoding is the one part of this flow that is real work, and a fake would have
+  hidden whether the picker's cached uri is readable at all.
+- **Cost** — a new runtime dependency (`expo-file-system@57`), a fifth entry in
+  every restricted-import list, and the whole file is held in memory as a base64
+  string, which will not hold for large attachments.
+
+---

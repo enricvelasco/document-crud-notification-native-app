@@ -1,7 +1,7 @@
 import { useAppNavigation } from '@hooks/useAppNavigation'
 import type { NewDocumentFormSubmitType } from '@ui/templates/newDocumentFormTemplate'
 
-import { submitNewDocumentWithoutPersistence } from './services'
+import { createNewDocumentSubmit } from './services'
 
 export interface UseDocumentNewScreenModel {
   handleSubmit: NewDocumentFormSubmitType
@@ -12,7 +12,7 @@ export const useDocumentNewScreen = (): UseDocumentNewScreenModel => {
   const { goBack } = useAppNavigation()
 
   return {
-    handleSubmit: submitNewDocumentWithoutPersistence,
+    handleSubmit: createNewDocumentSubmit(goBack),
     handleClose: goBack,
   }
 }

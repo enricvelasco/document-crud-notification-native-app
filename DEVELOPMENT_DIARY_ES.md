@@ -1110,3 +1110,84 @@ a más reciente.
   prueba; un segundo detent (`[0.75, 1]`) es la palanca si no lo hace.
 
 ---
+
+## Añadir una capa de actions como contrapartida de escritura de las views
+`2026-09-11` · `src/core/actions/createDocumentAction/`
+
+> Una view responde a "qué pinta esta screen al cargar". Nada respondía a "qué
+> pasa cuando esta screen envía".
+
+- Crear un documento son tres pasos seguidos —leer el fichero elegido,
+  codificarlo, enviarlo— y cada uno puede fallar con un mensaje distinto.
+  Ponerlo en el hook de la screen haría que la screen orquestase dominios;
+  ponerlo en el dominio haría que un repositorio leyese el sistema de ficheros.
+- `src/core/actions/` replica exactamente `src/core/views/`: una carpeta por
+  operación, un punto de entrada, una carpeta de mappers nombrados por la
+  dirección que recorren, models, mocks y un test. La diferencia es la dirección
+  —una view abre en abanico con `Promise.allSettled` y devuelve estado por
+  sección; una action es una sola secuencia y devuelve un `ActionResultType`
+  (`ok`, o `error` con mensaje traducido y la causa cruda).
+- La screen conserva su forma: `documentNewScreen` sigue dando a la template un
+  `NewDocumentFormSubmitType`, y hace dos cosas con el resultado de la action —
+  traducirlo al modelo de respuesta de la template, y cerrar el sheet cuando dice
+  que el documento se ha creado. Ambas viven en `resources/`, así que el hook se
+  queda en cableado y el comportamiento se puede testear sin renderer.
+- **Descartado** — reutilizar `ViewSectionType` para el resultado: su rama
+  `aborted` no significa nada en un envío, y un caso `ok` que no lleva datos
+  habría necesitado un parámetro de tipo `void` en cada llamada.
+- **Coste** — una segunda unión de estados (`ActionStatusTypes`) conviviendo con
+  `ViewSectionStatusTypes`, y una segunda convención de carpetas que aprender.
+
+---
+
+## Simular el endpoint de creación dentro del repositorio, no por encima
+`2026-09-11` · `src/core/domains/document/repositories/createDocument.ts`
+
+> El endpoint todavía no existe. Todo lo que depende de su *forma* se puede
+> construir y probar igualmente hoy.
+
+- `createDocument` mapea el modelo al payload `{name, version, file_base_64,
+  file_name}` que tomará la API y luego espera 2000 ms como sustituto de la
+  petición. La llamada real está justo debajo, comentada, tomando la misma
+  variable `payload` — así que aterrizar el endpoint es borrar dos líneas y
+  descomentar dos.
+- El retardo no es decorado: es la única razón por la que se puede ver funcionar
+  el bloqueo de campos del formulario y la etiqueta `Enviando…` antes de que
+  haya servidor.
+- Mantener la simulación *dentro* del repositorio significa que la action, la
+  screen y sus tests se escriben contra la firma definitiva. Nada por encima del
+  dominio sabe que falta el endpoint.
+- **Descartado** — simular en la action o en la screen: el mapper del payload se
+  habría quedado sin quien lo llamase, y todas las capas de arriba habría que
+  reescribirlas al aterrizar el endpoint.
+- **Coste** — código comentado en `src/`, que la propia política del proyecto
+  prohíbe; una rama `DocumentError` que ningún test alcanza honestamente, porque
+  el sustituto nunca rechaza; y `@services/http` aún no tiene `post`, así que la
+  línea comentada no compilará tal cual está hasta que lo tenga.
+
+---
+
+## Leer el fichero a través de un port en vez de dejar que la action importe Expo
+`2026-09-11` · `src/services/fileReader/` · `eslint.config.js`
+
+> El trabajo de la action es orquestar. Saber que el base64 sale de
+> `new File(uri).base64()` no es orquestar.
+
+- `@services/fileReader` expone un solo método, `readAsBase64(uri)`, y su adapter
+  de Expo es el único fichero del proyecto autorizado a importar
+  `expo-file-system` — vigilado por el mismo bloque `no-restricted-imports` que
+  ya guarda las librerías de picker, storage, localización e i18n.
+- Los fallos vuelven como `FileReaderError` nombrando el uri, así que la action
+  nunca ve un tipo de error de Expo.
+- Para que el uri llegase siquiera hasta ahí, `InputDocument` ha tenido que dejar
+  de informar del *nombre* del fichero y pasar a informar del `PickedDocumentModel`
+  entero; el formulario guarda ahora `fileName` para lo que pinta y `fileUri`
+  para lo que envía.
+- **Descartado** — falsear también el base64, ya que el endpoint ya está
+  falseado: la codificación es la única parte real de este flujo, y falsearla
+  habría escondido si el uri cacheado del picker es legible siquiera.
+- **Coste** — una dependencia de runtime nueva (`expo-file-system@57`), una
+  quinta entrada en cada lista de imports restringidos, y el fichero entero se
+  sostiene en memoria como string base64, lo que no aguantará adjuntos grandes.
+
+---

@@ -1,5 +1,6 @@
 import { View } from 'react-native'
 
+import type { PickedDocumentModel } from '@services/documentPicker'
 import { DocumentIcon } from '@ui/atoms/icons'
 import { SecondaryButton } from '@ui/atoms/secondaryButton'
 
@@ -8,7 +9,7 @@ import { styles } from './styles'
 
 export interface InputDocumentProps {
   placeholder: string
-  onSelectDocument: (documentName: string) => void
+  onSelectDocument: (document: PickedDocumentModel) => void
   value?: string
   disabled?: boolean
 }

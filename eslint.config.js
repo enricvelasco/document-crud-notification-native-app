@@ -222,6 +222,10 @@ module.exports = defineConfig([
             message: 'Import @services/documentPicker instead — only its adapter may use this library.',
           },
           {
+            name: 'expo-file-system',
+            message: 'Import @services/fileReader instead — only its adapter may use this library.',
+          },
+          {
             name: 'expo-localization',
             message: 'Import @services/language instead — only its adapter may use this library.',
           },
@@ -247,6 +251,41 @@ module.exports = defineConfig([
           {
             name: '@react-native-async-storage/async-storage',
             message: 'Import @services/storage instead — only its adapter may use this library.',
+          },
+          {
+            name: 'expo-file-system',
+            message: 'Import @services/fileReader instead — only its adapter may use this library.',
+          },
+          {
+            name: 'expo-localization',
+            message: 'Import @services/language instead — only its adapter may use this library.',
+          },
+          {
+            name: 'i18n-js',
+            message: 'Import @services/translate instead — only its adapter may use this library.',
+          },
+          {
+            name: 'react-native-svg',
+            message: 'Import an icon from @ui/atoms/icons instead — only the icons themselves may use this library.',
+          },
+        ],
+      }],
+    },
+  },
+
+  {
+    // --- the file reader adapter is the one place expo-file-system is allowed ---
+    files: ['src/services/fileReader/adapters/**'],
+    rules: {
+      'no-restricted-imports': ['error', {
+        paths: [
+          {
+            name: '@react-native-async-storage/async-storage',
+            message: 'Import @services/storage instead — only its adapter may use this library.',
+          },
+          {
+            name: 'expo-document-picker',
+            message: 'Import @services/documentPicker instead — only its adapter may use this library.',
           },
           {
             name: 'expo-localization',
@@ -276,6 +315,10 @@ module.exports = defineConfig([
             message: 'Import @services/storage instead — only its adapter may use this library.',
           },
           {
+            name: 'expo-file-system',
+            message: 'Import @services/fileReader instead — only its adapter may use this library.',
+          },
+          {
             name: 'i18n-js',
             message: 'Import @services/translate instead — only its adapter may use this library.',
           },
@@ -303,6 +346,10 @@ module.exports = defineConfig([
             message: 'Import @services/documentPicker instead — only its adapter may use this library.',
           },
           {
+            name: 'expo-file-system',
+            message: 'Import @services/fileReader instead — only its adapter may use this library.',
+          },
+          {
             name: 'expo-localization',
             message: 'Import @services/language instead — only its adapter may use this library.',
           },
@@ -324,6 +371,10 @@ module.exports = defineConfig([
           {
             name: 'expo-document-picker',
             message: 'Import @services/documentPicker instead — only its adapter may use this library.',
+          },
+          {
+            name: 'expo-file-system',
+            message: 'Import @services/fileReader instead — only its adapter may use this library.',
           },
           {
             name: 'expo-localization',
@@ -357,6 +408,10 @@ module.exports = defineConfig([
           {
             name: 'expo-document-picker',
             message: 'Import @services/documentPicker instead — only its adapter may use this library.',
+          },
+          {
+            name: 'expo-file-system',
+            message: 'Import @services/fileReader instead — only its adapter may use this library.',
           },
           {
             name: 'expo-localization',

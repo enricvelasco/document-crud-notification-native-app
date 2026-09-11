@@ -1,6 +1,8 @@
-import { documentPickerService } from '@services/documentPicker'
+import { documentPickerService, type PickedDocumentModel } from '@services/documentPicker'
 
-export const useInputDocument = (onSelectDocument: (documentName: string) => void) => {
+export const useInputDocument = (
+  onSelectDocument: (document: PickedDocumentModel) => void,
+) => {
   const selectDocument = async () => {
     const pickedDocument = await documentPickerService.pickDocument()
 
@@ -8,7 +10,7 @@ export const useInputDocument = (onSelectDocument: (documentName: string) => voi
       return
     }
 
-    onSelectDocument(pickedDocument.name)
+    onSelectDocument(pickedDocument)
   }
 
   return {

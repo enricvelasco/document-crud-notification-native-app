@@ -20,6 +20,7 @@
   "_DOCUMENT_LIST_TEMPLATE_CONTRIBUTORS": "Col·laboradors",
   "_DOCUMENT_LIST_TEMPLATE_ATTACHMENTS": "Adjunts",
   "_DOCUMENT_LIST_TEMPLATE_ADD": "Afegeix un document",
+  "_CREATE_DOCUMENT_ACTION_ERROR": "No s'ha pogut crear el document. Torna-ho a provar.",
   "_NEW_DOCUMENT_FORM_TEMPLATE_HEADER_TITLE": "Afegeix un document",
   "_NEW_DOCUMENT_FORM_TEMPLATE_CLOSE": "Tanca",
   "_NEW_DOCUMENT_FORM_TEMPLATE_TITLE": "Informació del document",

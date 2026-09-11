@@ -1,5 +1,7 @@
 import { useState } from 'react'
 
+import type { PickedDocumentModel } from '@services/documentPicker'
+
 import type { NewDocumentFormSubmitType, NewDocumentFormValuesModel } from '../models'
 import { NEW_DOCUMENT_FORM_EMPTY_VALUES } from './constants'
 import { isNewDocumentFormComplete } from './isNewDocumentFormComplete'
@@ -12,7 +14,7 @@ export interface UseNewDocumentFormTemplateModel {
   canSubmit: boolean
   handleNameChange: (name: string) => void
   handleVersionChange: (version: string) => void
-  handleFileChange: (fileName: string) => void
+  handleFileChange: (document: PickedDocumentModel) => void
   handleSubmit: () => void
 }
 
@@ -47,7 +49,8 @@ export const useNewDocumentFormTemplate = (
     canSubmit: !isSubmitting && isNewDocumentFormComplete(values),
     handleNameChange: (name) => setValues((current) => ({ ...current, name })),
     handleVersionChange: (version) => setValues((current) => ({ ...current, version })),
-    handleFileChange: (fileName) => setValues((current) => ({ ...current, fileName })),
+    handleFileChange: ({ name, uri }) =>
+      setValues((current) => ({ ...current, fileName: name, fileUri: uri })),
     handleSubmit: () => void submit(),
   }
 }
