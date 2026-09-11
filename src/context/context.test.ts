@@ -9,6 +9,10 @@ import { AppContextProvider } from './appContextProvider'
 import { combineComponents } from './combineComponents'
 import type { ProviderComponentType } from './models'
 
+jest.mock('./notificationContext', () => ({
+  NotificationContextProvider: jest.fn(({ children }: PropsWithChildren) => children),
+}))
+
 const CHILDREN = 'children'
 
 const renderedProviders: string[] = []

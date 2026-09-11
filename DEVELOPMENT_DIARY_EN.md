@@ -730,3 +730,83 @@ alternative it beat and what it cost. Ordered oldest first.
   correctly with nothing in the code to enforce it.
 
 ---
+
+## Give the notification domain a read-only subscription, not the raw socket
+`2026-09-11` · `src/core/domains/notification/`
+
+> A caller that can `send` on the notification stream is a caller that can
+> invent a protocol nobody wrote down.
+
+- `/notifications` is a one-way feed: the server pushes, the app listens.
+  `subscribeToNotifications` therefore returns a `NotificationSubscriptionModel`
+  carrying only `close`, even though `webSocketService.connect` hands back both
+  `send` and `close`.
+- The caller passes `onNotification` and receives a `NotificationModel` already
+  mapped out of the server's PascalCase payload, so nothing above the domain
+  ever sees `UserID` or `DocumentTitle`.
+- A `WebSocketError` reaching `onError` is rewrapped as a `NotificationError`
+  with the original as `cause`, and a `connect` that throws outright surfaces
+  the same way — the view layer attributes the failure to notifications, not to
+  "a socket somewhere".
+- **Rejected** — returning the `WebSocketConnectionModel` straight through: it
+  is one line shorter and it puts the transport's whole surface, `send`
+  included, in every consumer's hands.
+- **Cost** — the day a notification needs an outbound message (an ack, a
+  filter), the subscription model has to grow a method instead of the caller
+  just using what the port already offers.
+
+---
+
+## Open the notification stream from a context provider, not from the root layout
+`2026-09-11` · `src/context/notificationContext/`
+
+> The socket has to live as long as the app does, and `_layout.tsx` is a
+> navigator, not a lifecycle.
+
+- `NotificationContextProvider` is an entry in `APP_CONTEXT_PROVIDERS`, so it
+  mounts with the app, subscribes once on mount and closes the stream on
+  unmount — the same slot every other global will use.
+- The work sits in `resources/services.ts` (`startNotificationLogging`, and the
+  two loggers it wires) and `useNotificationSubscription` is a bare `useEffect`
+  around it, so the behaviour is testable without a renderer — this project has
+  no `@testing-library/react-native`.
+- `context.test.ts` mocks the provider away: it is about the fold, and the real
+  provider would drag `appConfig` and a live socket into a test of composition.
+- **Rejected** — a `useEffect` in `_layout.tsx`: it works, and it puts app-wide
+  lifecycle in the file that is supposed to describe routes, where the next
+  global concern would land next to it.
+- **Cost** — the provider currently shares nothing, so it is a context in
+  placement only; until it holds state, a reader has to open it to find out it
+  exists for its side effect.
+
+---
+
+## Let screens reach notifications through a hook, never through the context
+`2026-09-11` · `src/hooks/useNotifications.ts` · `src/context/notificationContext/`
+
+> A screen should ask for "the notification count", not for "the thing the
+> notification context happens to hold".
+
+- `NotificationContext` now carries `{ count, startSubscription,
+  stopSubscription }`, and the provider still opens the stream on mount — the
+  app is subscribed from the root without any screen asking.
+- `useNotifications` in `src/hooks/` is the only consumer of `useContext`, so a
+  screen imports `@hooks/useNotifications` and never learns a context exists.
+  It throws when called outside the provider tree instead of handing back a
+  `null` every call site would have to narrow.
+- The start/stop lifecycle lives in `createNotificationStreamController`, a
+  plain closure in `resources/services.ts` holding one subscription: `start` is
+  a no-op while a stream is open, `stop` closes and clears it, and starting
+  again opens a fresh one. That makes the semantics testable with no renderer,
+  and it makes the effect's double-invoke under StrictMode a non-event.
+- This supersedes the cost noted in the previous entry — the provider now holds
+  state, so it is a context in substance and not only in placement.
+- **Rejected** — exporting `NotificationContext` for screens to consume
+  directly: one import less, and every screen would then be coupled to how the
+  value is provided, so moving notifications to a store later would touch every
+  one of them.
+- **Cost** — there is a single shared stream, so a screen calling
+  `stopSubscription` stops it for the whole app, not just for itself. Nothing in
+  the API says so.
+
+---

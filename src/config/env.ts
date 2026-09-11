@@ -13,25 +13,25 @@ export interface AppConfig {
 
 const DEFAULT_TIMEOUT_MS = 15000
 
+const STALE_CONFIG_HINT = 'Restart the bundler with a cleared cache (expo start -c).'
+
 const readAppConfig = (): AppConfig => {
   const raw = Constants.expoConfig?.extra?.appConfig as Partial<AppConfig> | undefined
 
   if (raw == null) {
-    throw new Error(
-      'Missing Constants.expoConfig.extra.appConfig. Restart the bundler with a ' +
-        'cleared cache (expo start -c).',
-    )
+    throw new Error(`Missing Constants.expoConfig.extra.appConfig. ${STALE_CONFIG_HINT}`)
   }
   if (!isAppEnv(raw.appEnv)) {
     throw new Error(
-      `Invalid appEnv "${String(raw.appEnv)}". Expected one of: ${APP_ENVS.join(', ')}.`,
+      `Invalid appEnv "${String(raw.appEnv)}". Expected one of: ${APP_ENVS.join(', ')}. ` +
+        STALE_CONFIG_HINT,
     )
   }
   if (typeof raw.apiUrl !== 'string' || raw.apiUrl === '') {
-    throw new Error('App config is missing a non-empty "apiUrl".')
+    throw new Error(`App config is missing a non-empty "apiUrl". ${STALE_CONFIG_HINT}`)
   }
   if (typeof raw.webSocketUrl !== 'string' || raw.webSocketUrl === '') {
-    throw new Error('App config is missing a non-empty "webSocketUrl".')
+    throw new Error(`App config is missing a non-empty "webSocketUrl". ${STALE_CONFIG_HINT}`)
   }
 
   return {
