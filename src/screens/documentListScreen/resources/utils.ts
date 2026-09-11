@@ -1,5 +1,10 @@
 import { type DocumentListViewModel, ViewSectionStatusTypes } from '@core/views/documentListView'
-import { type DocumentListStateModel, DocumentListStateTypes } from '@ui/templates/documentListTemplate'
+import {
+  type DocumentListLayoutTypes,
+  type DocumentListStateModel,
+  DocumentListStateTypes,
+  isDocumentListLayout,
+} from '@ui/templates/documentListTemplate'
 
 export const toDocumentListState = (
   documents: DocumentListViewModel['documents'],
@@ -12,3 +17,8 @@ export const toDocumentListState = (
 
   return { type: DocumentListStateTypes.Content, documents: documents.data }
 }
+
+export const toDocumentListLayout = (
+  storedLayout: string | null,
+): DocumentListLayoutTypes | null =>
+  storedLayout !== null && isDocumentListLayout(storedLayout) ? storedLayout : null

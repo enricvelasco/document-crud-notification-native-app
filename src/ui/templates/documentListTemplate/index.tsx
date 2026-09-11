@@ -9,48 +9,56 @@ import { DropdownButton } from '@ui/molecules/dropdownButton'
 import { OptionsButton } from '@ui/molecules/optionsButton'
 
 import { DocumentListBody } from './components/documentListBody'
-import { DocumentListLayoutTypes, type DocumentListSortTypes, type DocumentListStateModel } from './models'
+import type { DocumentListLayoutTypes, DocumentListSortTypes, DocumentListStateModel } from './models'
 import { getDocumentListLayoutOptions } from './resources/getDocumentListLayoutOptions'
 import { getDocumentListSortOptions } from './resources/getDocumentListSortOptions'
 import { getNotificationsLabelKey } from './resources/getNotificationsLabelKey'
+import { isDocumentListLayout } from './resources/isDocumentListLayout'
 import { isDocumentListSort } from './resources/isDocumentListSort'
-import { useDocumentListTemplate } from './resources/useDocumentListTemplate'
 import { styles } from './styles'
 
 export * from './models'
+export { isDocumentListLayout } from './resources/isDocumentListLayout'
 
 export interface DocumentListTemplateProps {
   state: DocumentListStateModel
   sort: DocumentListSortTypes
+  layout: DocumentListLayoutTypes
   onSortChange: (sort: DocumentListSortTypes) => void
+  onLayoutChange: (layout: DocumentListLayoutTypes) => void
   onAddDocument: () => void
   onOpenNotifications: () => void
   isRefreshing?: boolean
   onRefresh?: () => void
   notificationCount?: number
   hasNotificationError?: boolean
-  initialLayout?: DocumentListLayoutTypes
 }
 
 export const DocumentListTemplate = ({
   state,
   sort,
+  layout,
   onSortChange,
+  onLayoutChange,
   onAddDocument,
   onOpenNotifications,
   isRefreshing,
   onRefresh,
   notificationCount = 0,
   hasNotificationError = false,
-  initialLayout = DocumentListLayoutTypes.List,
 }: DocumentListTemplateProps) => {
   const translate = useTranslate()
-  const { layout, handleLayoutChange } = useDocumentListTemplate(initialLayout)
 
   const handleSortChange = (value: string): void => {
     if (!isDocumentListSort(value)) return
 
     onSortChange(value)
+  }
+
+  const handleLayoutChange = (value: string): void => {
+    if (!isDocumentListLayout(value)) return
+
+    onLayoutChange(value)
   }
 
   return (
