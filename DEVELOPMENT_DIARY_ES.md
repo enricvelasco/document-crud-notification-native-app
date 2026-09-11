@@ -8,41 +8,6 @@ a más reciente.
 
 ---
 
-## Aplicar la política de código en el linter en lugar de en revisión
-`2026-09-06` · `eslint.config.js`
-
-> Una convención que nadie ejecuta se erosiona una excepción a la vez.
-
-- Las reglas que importan aquí —sin punto y coma, toda función como `const` con
-  arrow function, techo duro de dos parámetros— son justo las que decaen en
-  silencio en revisión.
-- Todas son reglas de ESLint, así que `yarn lint` *es* la guía de estilo y la
-  deriva no puede acumularse.
-- **Descartado** — añadir Prettier: la mitad de lo que hay que vigilar es
-  arquitectónico (`max-params`, `func-style`, imports restringidos) y Prettier
-  solo formatea, así que serían dos herramientas opinando sobre la misma línea.
-- **Coste** — `eslint --fix` carga con un formateo que un formateador dedicado
-  haría más rápido, y algún código legítimo necesita un override explícito.
-
----
-
-## Mantener ESLint en la v9 mientras la config de Expo se pone al día
-`2026-09-06` · `package.json`
-
-> Quedarse una major por detrás sale más barato que forkear reglas que el
-> framework ya cura.
-
-- `eslint-config-expo@57` no carga bajo ESLint 10.
-- Subir a la nueva major habría implicado renunciar al conjunto de reglas de
-  React Native de Expo —la parte que entiende Metro, JSX y los globals de RN— y
-  reconstruirlo.
-- **Descartado** — escribir una config sustituta a mano: es mantenimiento que el
-  framework ya hace, y divergiría de upstream de inmediato.
-- **Coste** — fijado a sabiendas a `^9` en una herramienta central hasta que
-  Expo soporte la 10.
-
----
-
 ## Resolver la configuración de entorno en build y revalidarla en arranque
 `2026-09-06` · `app.config.ts` · `src/config/`
 
@@ -93,25 +58,6 @@ a más reciente.
   equivocado es idéntica a una correcta.
 - **Coste** — cuatro juegos de credenciales nativas que gestionar cuando esto
   llegue a builds de store.
-
----
-
-## Escribir la política de código como skills de agente, no como guía de contribución
-`2026-09-07` · `.claude/skills/`
-
-> La política va en la herramienta que escribe el código, no en un fichero que
-> alguien debe acordarse de abrir.
-
-- Casi todo el código se escribe con un agente de IA, y un `CONTRIBUTING.md`
-  solo ayuda en un momento que nunca coincide con el de teclear.
-- Once skills llevan las convenciones —naming, estructura de carpetas por capa,
-  arrow functions, condicionales planos, sin comentarios, inversión de
-  dependencias—, cada una con la regla, el razonamiento y ejemplos ❌/✅.
-- **Descartado** — dejar las reglas solo en el linter: un linter rechaza una
-  violación, pero no puede expresar *qué hacer en su lugar*, que es la parte que
-  da forma a un diseño.
-- **Coste** — un segundo sitio donde vive la política, que revisar cada vez que
-  cambia una convención.
 
 ---
 
@@ -178,25 +124,6 @@ a más reciente.
 
 ---
 
-## Convertir la frontera del puerto en un error de lint, no en una convención
-`2026-09-08` · `eslint.config.js`
-
-> Un puerto que nadie vigila se desmorona en el primer import directo.
-
-- Ese import es invisible en revisión porque tiene el mismo aspecto que
-  cualquier otro import del fichero.
-- `no-restricted-imports` nombra cada librería envuelta y el puerto que hay que
-  usar; `no-restricted-globals` bloquea el `fetch` global.
-- Cada carpeta de adapter vuelve a abrir solo la librería que le pertenece, de
-  modo que la arquitectura rompe el build en vez de degradarse en silencio.
-- **Descartado** — confiar solo en las skills: guían al agente que escribe
-  código nuevo, pero no hacen nada con el código pegado desde fuera.
-- **Coste** — el flat config de ESLint fusiona reglas por nombre, así que cada
-  bloque de adapter repite la lista completa menos su propia librería; una
-  quinta librería envuelta obliga a tocar cinco sitios.
-
----
-
 ## Traducir los payloads de la API a modelos de dominio en el borde
 `2026-09-08` · `src/core/domains/document/`
 
@@ -246,24 +173,6 @@ a más reciente.
   API de traducción.
 - **Coste** — dos puertos y un paso de cableado entre ambos que un servicio
   fusionado no habría necesitado.
-
----
-
-## Derivar la lista de alias de imports desde `tsconfig.json`
-`2026-09-08` · `scripts/import-aliases.js` · `eslint.config.js`
-
-> `@core` es indistinguible de un paquete npm con scope solo por su forma.
-
-- El ordenador de imports archivaba los alias del proyecto entre las
-  dependencias de terceros, así que cada fichero abría con módulos locales
-  disfrazados de dependencias.
-- La config de ESLint construye sus patrones de alias leyendo el mapa `paths` de
-  `tsconfig.json`, que sigue siendo el único sitio donde se declara un alias.
-- **Descartado** — listar los alias otra vez en la config del linter: las dos
-  listas serían iguales solo hasta el siguiente alias, y el fallo sería un
-  import mal ordenado en silencio en lugar de un error.
-- **Coste** — un acoplamiento en build entre la config del linter y
-  `tsconfig.json`, y un script que debe quedar fuera del conjunto linteado.
 
 ---
 
@@ -333,8 +242,7 @@ a más reciente.
   feature, repegados en el siguiente uso y divergiendo en tamaño y color de la
   copia de al lado.
 - Cada icono es un componente bajo `src/ui/atoms/icons/` con props nuestras, y
-  la config del linter hace de esa carpeta el único sitio donde se puede
-  importar `react-native-svg`.
+  esa carpeta es el único sitio donde se importa `react-native-svg`.
 - **Descartado** — una fuente de iconos: añade un asset que cargar y renuncia al
   control por icono del trazo y el color.
 - **Coste** — un componente por icono, escrito a mano.
@@ -347,22 +255,16 @@ a más reciente.
 > La persistencia es una implementación reemplazable, así que la app pide
 > guardar un valor bajo una clave y nunca sabe quién le responde.
 
-- Todavía nada en la app persistía nada, así que la primera llamada a storage
-  era el momento de decidir si `@react-native-async-storage/async-storage` se
-  importa una vez o en todas partes.
 - `src/services/storage/` expone `getItem` / `setItem` / `removeItem` /
-  `clear` sobre nuestro propio `StorageServiceModel`, y
-  `asyncStorageAdapter.ts` es el único fichero que puede importar la librería:
-  lo sostiene la misma lista `no-restricted-imports` que ya protege el picker,
-  la localización, i18n y los SVG.
+  `clear` sobre nuestro propio `StorageServiceModel`, y `asyncStorageAdapter.ts`
+  es el único fichero que importa la librería.
 - El port habla de valores, no de strings: el adapter es el dueño del
   `JSON.stringify` / `JSON.parse`, así que un valor guardado ilegible llega
   como `StorageError` en la frontera en vez de como `SyntaxError` dentro de una
   screen.
 - **Descartado** — un port que guarde strings y deje el parseo a quien lo
-  llama: el mismo parseo y su `try`/`catch` se reescriben entonces en cada
-  punto de llamada, cada uno libre de discrepar sobre qué significa un valor
-  corrupto.
+  llama: cada punto de llamada carga entonces con su propio `JSON.parse` en un
+  `try`/`catch` y decide por su cuenta qué significa un valor corrupto.
 - **Coste** — `getItem<TValue>` castea lo que vuelva, así que un cambio de
   forma se detecta donde se usa el valor y no donde se lee.
 - **Abierto** — se eligió async-storage sobre `expo-sqlite/kv-store` (el
@@ -670,8 +572,8 @@ a más reciente.
 - Todo lo que lleva el prefijo `to*` en este repo es un mapper, así que el
   nombre le decía a quien lee que esperara datos y le entregaba un componente.
 - Ascenderlo a un componente `ListRefreshControl` era el arreglo evidente y el
-  equivocado: `refreshControl` recibe un elemento que Android clona como padre
-  del scroll view, así que el wrapper tendría que reenviar el `style` y los
+  equivocado: el elemento que Android clona como padre del scroll view tiene que
+  ser el control real, así que un wrapper tendría que reenviar el `style` y los
   `children` que inyecta React Native, y el call site necesitaría un cast.
 - Ahora es un ternario dentro de `List` que elige entre un elemento y
   `undefined`, que es una elección entre dos valores y no una rama que merezca
@@ -839,9 +741,8 @@ a más reciente.
 - El ciclo start/stop vive en `createNotificationStreamController`, un closure
   plano en `resources/services.ts` que guarda una sola suscripción: `start` no
   hace nada mientras haya stream abierto, `stop` lo cierra y lo limpia, y
-  volver a arrancar abre uno nuevo. Eso hace la semántica testeable sin
-  renderer, y convierte el doble disparo del efecto bajo StrictMode en un no
-  problema.
+  volver a arrancar abre uno nuevo. Eso convierte además el doble disparo del
+  efecto bajo StrictMode en un no problema.
 - Esto deja atrás el coste apuntado en la entrada anterior — el provider ya
   guarda estado, así que es un context de verdad y no solo por ubicación.
 - **Descartado** — exportar `NotificationContext` para que las pantallas lo
@@ -899,13 +800,12 @@ a más reciente.
   que aquí no corre nada más rápido. Lo que cambia es que un nombre significa
   una sola cosa en todo su scope, y que la mutación hay que escribirla
   `state.x` justo donde ocurre.
-- **Descartado** — apoyarse en `prefer-const`: solo marca un `let` que nunca se
-  reasigna, que es justo el caso que nadie falla, así que dejaría intacto todo
-  binding del que va realmente esta política.
-- **Coste** — la regla todavía no está en `eslint.config.js`, porque activarla
-  rompe los adapters de websocket y de language, anteriores a la política. Hasta
-  reformarlos esto depende de la review, que es justo de lo que este proyecto
-  decidió no depender en su primera entrada.
+- **Descartado** — marcar solo el `let` que nunca se reasigna, que es justo el
+  caso que nadie falla: dejaría intacto todo binding del que va realmente esta
+  política.
+- **Coste** — los adapters de websocket y de language son anteriores a la regla
+  y siguen guardando estado en bindings sueltos, así que hasta reformarlos la
+  política no se aplica y conviven dos formas de closure en `src/`.
 
 ---
 
@@ -1133,7 +1033,7 @@ a más reciente.
   `NewDocumentFormSubmitType`, y hace dos cosas con el resultado de la action —
   traducirlo al modelo de respuesta de la template, y cerrar el sheet cuando dice
   que el documento se ha creado. Ambas viven en `resources/`, así que el hook se
-  queda en cableado y el comportamiento se puede testear sin renderer.
+  queda en cableado.
 - **Descartado** — reutilizar `ViewSectionType` para el resultado: su rama
   `aborted` no significa nada en un envío, y un caso `ok` que no lleva datos
   habría necesitado un parámetro de tipo `void` en cada llamada.
@@ -1170,15 +1070,13 @@ a más reciente.
 ---
 
 ## Leer el fichero a través de un port en vez de dejar que la action importe Expo
-`2026-09-11` · `src/services/fileReader/` · `eslint.config.js`
+`2026-09-11` · `src/services/fileReader/` · `src/core/actions/createDocumentAction/`
 
 > El trabajo de la action es orquestar. Saber que el base64 sale de
 > `new File(uri).base64()` no es orquestar.
 
 - `@services/fileReader` expone un solo método, `readAsBase64(uri)`, y su adapter
-  de Expo es el único fichero del proyecto autorizado a importar
-  `expo-file-system` — vigilado por el mismo bloque `no-restricted-imports` que
-  ya guarda las librerías de picker, storage, localización e i18n.
+  de Expo es el único fichero autorizado a importar `expo-file-system`.
 - Los fallos vuelven como `FileReaderError` nombrando el uri, así que la action
   nunca ve un tipo de error de Expo.
 - Para que el uri llegase siquiera hasta ahí, `InputDocument` ha tenido que dejar
@@ -1189,8 +1087,8 @@ a más reciente.
   falseado: la codificación es la única parte real de este flujo, y falsearla
   habría escondido si el uri cacheado del picker es legible siquiera.
 - **Coste** — una dependencia de runtime nueva (`expo-file-system@57`), una
-  quinta entrada en cada lista de imports restringidos, y el fichero entero se
-  sostiene en memoria como string base64, lo que no aguantará adjuntos grandes.
+  quinta librería confinada a un único adapter, y el fichero entero se sostiene
+  en memoria como string base64, lo que no aguantará adjuntos grandes.
 
 ---
 
@@ -1376,17 +1274,16 @@ a más reciente.
 - `fail` vive en el controller del stream y no en el hook, porque el contador de
   fallos es suyo: fija la cuenta en el límite, así que un error tardío del socket
   que acaba de cerrar no puede reportar dos veces la misma caída.
-- Volver a tener red limpia el error durante el render, donde es estado derivado
-  y no un efecto secundario; el efecto abre después un socket nuevo.
+- Caerse la red normalmente falla el stream tres veces antes y deja `isError`
+  levantado, así que volver a tener red lo limpia durante el render, donde es
+  estado derivado y no un efecto secundario — si no, el feed volvería sano bajo
+  un banner caduco de "desconectado". El efecto abre después un socket nuevo.
 - Perder la red ya es un estado que la app tiene previsto, así que el stream
   reporta sus fallos con `console.warn` y no con `console.error`: LogBox pintaba
   una caja roja de crash en dev para algo que acaba en un aviso de diseño.
 - `startSubscription` — el botón de reconectar de la página de notificaciones —
   se niega a ejecutarse sin conexión, así que la única vía pública de vuelta al
   stream no puede reabrirlo por debajo del aviso.
-- Caerse la red normalmente falla el stream tres veces antes y deja `isError`
-  levantado, así que el hook lo limpia en la transición a online durante el
-  render — si no, el feed volvería sano bajo un banner caduco de "desconectado".
 - Reintentar le pide a `networkService.refresh()` una lectura nueva y solo llama
   a `refreshCurrentRoute` si vuelve online; eso hace `router.replace` del
   pathname actual, y replace siempre monta una key de ruta nueva, así que la
