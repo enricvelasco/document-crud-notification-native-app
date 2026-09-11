@@ -2,7 +2,7 @@
 name: view-structure
 description: >-
   Project architecture policy for views — the `.ts` (never `.tsx`) data-loading
-  layer that feeds a Screen, under `src/views/<Entity><Purpose>View/`. A view
+  layer that feeds a Screen, under `src/core/views/<entity><Purpose>View/`. A view
   calls N domain repositories with `Promise.allSettled`, turns each settled
   result into either data or a controlled error message, and maps everything into
   the exact model the Screen paints on initial load, so the Screen needs zero
@@ -23,12 +23,12 @@ Screen receives the model, there is no mapping left to do** — the Screen only
 paints.
 
 Layering: `src/app/` route → `<Entity><Purpose>Screen` (`.tsx`, paints) →
-`<Entity><Purpose>View` (`.ts`, loads + maps) → `@/core/domains/*` → transport.
+`<Entity><Purpose>View` (`.ts`, loads + maps) → `@core/domains/*` → transport.
 
 ## Folder layout
 
 ```
-src/views/<Entity><Purpose>View/
+src/core/views/<entity><Purpose>View/
 ├── index.ts          # entry point — re-exports the loader (+ its models)
 ├── view.ts           # the loader: Promise.allSettled over N domain calls
 ├── mappers/
@@ -44,8 +44,11 @@ src/views/<Entity><Purpose>View/
 └── services.ts       # only if needed
 ```
 
-Folder name: **PascalCase, entity first, `View` last** — `DocumentListView/`,
-`DocumentDetailView/`. It pairs 1:1 with `DocumentListScreen/`.
+Folder name: **camelCase, entity first, `View` last** — `documentListView/`,
+`documentDetailView/`. It pairs 1:1 with `documentListScreen/`. Only
+identifiers are PascalCase here: the folder is camelCase like every other
+folder in the codebase (see the naming-conventions policy), while the models it
+exports keep their capital — `DocumentListViewModel`.
 
 `view.ts` is **`.ts`, not `.tsx`** — a view never contains JSX. If you are
 reaching for markup, that belongs to the Screen.
@@ -58,9 +61,9 @@ settles independently, and the mapper converts each settled result into either
 its data or a **controlled error message** for that specific section.
 
 ```ts
-// src/views/DocumentListView/view.ts
-import { listAuthors } from '@/core/domains/author'
-import { listDocuments } from '@/core/domains/document'
+// src/core/views/documentListView/view.ts
+import { listAuthors } from '@core/domains/author'
+import { listDocuments } from '@core/domains/document'
 
 import { documentListToViewModel } from './mappers/documentListToViewModel'
 import type { DocumentListViewModel } from './models'
@@ -86,7 +89,7 @@ section as a discriminated union so the Screen can render data or the error
 message for that section and nothing else is affected.
 
 ```ts
-// src/views/DocumentListView/models/viewSectionTypes.ts
+// src/core/views/documentListView/models/viewSectionTypes.ts
 export const ViewSectionStatusTypes = {
   Ok: 'ok',
   Error: 'error',
@@ -101,7 +104,7 @@ export type ViewSectionType<TData> =
 ```
 
 ```ts
-// src/views/DocumentListView/models/documentListViewModel.ts
+// src/core/views/documentListView/models/documentListViewModel.ts
 export interface DocumentListViewModel {
   readonly documents: ViewSectionType<readonly DocumentRowModel[]>
   readonly authors: ViewSectionType<readonly AuthorChipModel[]>
@@ -114,7 +117,7 @@ text. A rejected promise becomes a message the user can read; the raw error is
 logged, not rendered.
 
 Once this section pattern repeats across views, hoist `ViewSectionType` and its
-`ViewSectionStatusTypes` into a shared location (`src/models/`) rather than
+`ViewSectionStatusTypes` into a shared location (`src/core/models/`) rather than
 copying it.
 
 ## `mappers/` — build the final render shape
@@ -126,8 +129,8 @@ counts, formatted dates and disabled flags, and merge in route params or
 translations.
 
 ```ts
-// src/views/DocumentListView/mappers/documentListToViewModel.ts
-import type { DocumentModel, ListDocumentsResponseModel } from '@/core/domains/document'
+// src/core/views/documentListView/mappers/documentListToViewModel.ts
+import type { DocumentModel, ListDocumentsResponseModel } from '@core/domains/document'
 
 import { ERROR_MESSAGES } from '../constants'
 import {
@@ -211,7 +214,7 @@ test without rendering:
 
 ## What a view must not do
 
-- Contain JSX or import from `react-native` / `@/ui` — it is `.ts`.
+- Contain JSX or import from `react-native` / `@ui` — it is `.ts`.
 - Use `Promise.all` for independent calls — one failure would lose everything.
 - Let a raw error escape to the Screen — every rejection becomes a controlled
   message.
@@ -225,4 +228,4 @@ No semicolons, 2-space indent, single quotes, sorted imports, max 2 params
 (bundle mapper inputs into one object — as `DocumentListResultsModel` does).
 Every function is a `const` bound to an arrow function, defined above its first
 use (see the arrow-function-declarations policy).
-Import domains by alias (`@/core/domains/...`), view internals by relative path.
+Import domains by alias (`@core/domains/...`), view internals by relative path.

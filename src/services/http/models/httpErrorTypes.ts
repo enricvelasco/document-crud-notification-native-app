@@ -1,4 +1,5 @@
 export const HttpErrorTypes = {
+  Aborted: 'aborted',
   Network: 'network',
   Parse: 'parse',
   Status: 'status',

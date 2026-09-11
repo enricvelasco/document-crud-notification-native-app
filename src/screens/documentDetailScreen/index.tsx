@@ -1,6 +1,6 @@
 import { Text, View } from 'react-native'
 
-import { BottomSheetNavigationWrapper } from '@ui/organisms/BottomSheetNavigationWrapper'
+import { BottomSheetNavigationWrapper } from '@ui/organisms/bottomSheetNavigationWrapper'
 
 import { useDocumentDetailScreen } from './resources/useDocumentDetailScreen'
 import { styles } from './styles'

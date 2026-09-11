@@ -5,9 +5,9 @@ import { DocumentError, type DocumentListPayloadType, type GetDocumentListType }
 
 const DOCUMENT_LIST_PATH = '/documents'
 
-export const getDocumentList: GetDocumentListType = async () => {
+export const getDocumentList: GetDocumentListType = async (signal) => {
   try {
-    const payload = await httpService.get<DocumentListPayloadType>(DOCUMENT_LIST_PATH)
+    const payload = await httpService.get<DocumentListPayloadType>(DOCUMENT_LIST_PATH, { signal })
 
     return { documents: documentListPayloadToModel(payload) }
   } catch (error) {

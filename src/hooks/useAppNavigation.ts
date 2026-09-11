@@ -1,12 +1,7 @@
 import { useRouter } from 'expo-router'
 import { useCallback } from 'react'
 
-export const AppRouteTypes = {
-  documentList: '/',
-  documentDetail: '/detail',
-} as const
-
-export type AppRouteTypes = (typeof AppRouteTypes)[keyof typeof AppRouteTypes]
+import { APP_ROUTES, type AppRouteTypes } from '@constants/paths'
 
 export interface UseAppNavigationModel {
   goBack: () => void
@@ -19,7 +14,7 @@ export const useAppNavigation = (): UseAppNavigationModel => {
   const goBack = useCallback(() => {
     if (router.canGoBack()) return router.back()
 
-    return router.replace(AppRouteTypes.documentList)
+    return router.replace(APP_ROUTES.documentList)
   }, [router])
 
   const navigateTo = useCallback((route: AppRouteTypes) => router.push(route), [router])

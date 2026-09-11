@@ -102,6 +102,47 @@ describe('createFetchHttpAdapter', () => {
     })
   })
 
+  it('passes an abort signal to the transport even when the caller gives none', async () => {
+    fetchMock.mockResolvedValue(toResponseStub([]))
+
+    await httpService.get('/documents')
+
+    expect(fetchMock.mock.calls[0][1].signal).toBeInstanceOf(AbortSignal)
+  })
+
+  it('aborts the request when the caller signal aborts', async () => {
+    const abortController = new AbortController()
+    fetchMock.mockImplementation((_url: string, init: RequestInit) =>
+      new Promise((_resolve, reject) => {
+        init.signal?.addEventListener('abort', () => reject(toAbortError()))
+      }))
+
+    const request = httpService.get('/documents', { signal: abortController.signal })
+    abortController.abort()
+
+    await expect(request).rejects.toMatchObject({ type: HttpErrorTypes.Aborted })
+  })
+
+  it('does not send the request when the caller signal is already aborted', async () => {
+    const abortController = new AbortController()
+    abortController.abort()
+    fetchMock.mockImplementation((_url: string, init: RequestInit) =>
+      init.signal?.aborted ? Promise.reject(toAbortError()) : Promise.resolve(toResponseStub([])))
+
+    await expect(
+      httpService.get('/documents', { signal: abortController.signal }),
+    ).rejects.toMatchObject({ type: HttpErrorTypes.Aborted })
+  })
+
+  it('still reports a timeout when the caller signal never aborted', async () => {
+    const abortController = new AbortController()
+    fetchMock.mockRejectedValue(toAbortError())
+
+    await expect(
+      httpService.get('/documents', { signal: abortController.signal }),
+    ).rejects.toMatchObject({ type: HttpErrorTypes.Timeout })
+  })
+
   it('always throws our own error type, never the transport one', async () => {
     fetchMock.mockRejectedValue(new TypeError('Network request failed'))
 

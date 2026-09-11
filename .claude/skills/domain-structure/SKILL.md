@@ -53,7 +53,7 @@ camelCase and named for what they do — descriptive, not generic
 
 ## `index.ts` — the boundary
 
-Outside code imports from `@/core/domains/<entity>` and nothing deeper. The rest of
+Outside code imports from `@core/domains/<entity>` and nothing deeper. The rest of
 the folder is private.
 
 ```ts
@@ -253,4 +253,4 @@ Every function is a `const` bound to an arrow function, never a `function`
 declaration (see the arrow-function-declarations policy) — which also means a
 helper must be defined above its first use in the file.
 Import within a domain by relative path (`../models`); import a domain from
-outside by alias (`@/core/domains/document`).
+outside by alias (`@core/domains/document`).
