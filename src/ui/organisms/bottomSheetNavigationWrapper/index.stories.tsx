@@ -56,12 +56,22 @@ const meta = {
           '',
           '**Platform behaviour worth knowing before you rely on a prop:**',
           '',
-          '- `backgroundColor` paints the scrim behind the sheet. Android honours it; iOS',
-          '  and web paint their own system dimming and ignore it.',
+          '- `backgroundColor` paints the sheet itself — its whole chrome, including the',
+          '  drag-indicator zone and, on iOS, the home-indicator safe-area inset. Without',
+          '  it the sheet keeps the platform default, which shows as a grey rim around',
+          '  content that paints itself white. Android, iOS 16.4+ and web honour it.',
+          '- `scrimColor` paints the veil behind the sheet. Android honours it; iOS and',
+          '  web paint their own system dimming and ignore it.',
           '- `enableDropDownClose` and `enableClickOutsideClose` are two switches on iOS',
           '  only in name. SwiftUI has a single "interactive dismissal" flag covering both',
           '  the swipe and the backdrop tap, so turning either one off disables both. On',
           '  Android only `enableClickOutsideClose` lands; the drag gesture stays on.',
+          '- `hasContentInset` decides whether the platform inset around `children`',
+          '  stays. Every platform pads the sheet content by default (16pt sideways),',
+          '  which is right for content that brings none of its own and wrong for a',
+          '  template that already owns its padding and draws edge-to-edge rules — that',
+          '  inset leaves it floating in a 16pt gutter. Turn it off and `children` get',
+          '  the full sheet width.',
           '- `contentHeight` is a fixed height in points/dp, applied to the content',
           '  rather than handed to the platform as a snap point. Material 3 sizes a',
           '  sheet to its content and drops a pixel snap point on the floor, so a sheet',
@@ -108,14 +118,24 @@ const meta = {
       description: 'Whether the drag indicator is drawn at the top of the sheet.',
       table: { defaultValue: { summary: 'true' } },
     },
+    hasContentInset: {
+      control: 'boolean',
+      description: 'Whether the platform keeps its own inset around `children`. Turn it off for full-bleed content.',
+      table: { defaultValue: { summary: 'true' } },
+    },
     backgroundColor: {
       control: 'color',
-      description: 'The scrim colour behind the sheet. Android only.',
+      description: 'The sheet\'s own background, chrome included. Android, iOS 16.4+ and web.',
+      table: { defaultValue: { summary: 'Colors.background.default' } },
+    },
+    scrimColor: {
+      control: 'color',
+      description: 'The veil colour behind the sheet. Android only.',
       table: { defaultValue: { summary: '#00000066' } },
     },
     children: {
       control: false,
-      description: 'What the sheet paints. The sheet adds its own inset around it.',
+      description: 'What the sheet paints. The sheet adds its own inset around it unless `hasContentInset` is off.',
     },
   },
 
@@ -125,7 +145,9 @@ const meta = {
     enableDropDownClose: true,
     enableClickOutsideClose: true,
     showDragBar: true,
-    backgroundColor: '#00000066',
+    hasContentInset: true,
+    backgroundColor: Colors.background.default,
+    scrimColor: '#00000066',
     children: <SheetContent />,
   },
 } satisfies Meta<typeof BottomSheetNavigationWrapper>
@@ -151,6 +173,13 @@ export const WithoutDragBar: Story = {
   },
 }
 
+/** Full bleed: `children` reach the sheet edges and bring their own padding. */
+export const WithoutContentInset: Story = {
+  args: {
+    hasContentInset: false,
+  },
+}
+
 /** A sheet the user cannot dismiss by gesture. On Android the drag still works. */
 export const NotDismissible: Story = {
   args: {
@@ -159,10 +188,10 @@ export const NotDismissible: Story = {
   },
 }
 
-/** An opaque scrim, so nothing behind the sheet reads through. Android only. */
+/** An opaque veil, so nothing behind the sheet reads through. Android only. */
 export const OpaqueScrim: Story = {
   args: {
-    backgroundColor: '#000000CC',
+    scrimColor: '#000000CC',
   },
 }
 

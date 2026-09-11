@@ -1,26 +1,9 @@
-import { useEffect, useState } from 'react'
-import { InteractionManager, useWindowDimensions } from 'react-native'
-
-import { useAppNavigation } from '@hooks/useAppNavigation'
+import { useBottomSheetScreen, type UseBottomSheetScreenModel } from '@hooks/useBottomSheetScreen'
 
 const SHEET_SCREEN_RATIO = 0.5
 
-export const useDocumentDetailScreen = () => {
-  const { goBack } = useAppNavigation()
-  const { height } = useWindowDimensions()
-  const [isVisible, setIsVisible] = useState(true)
+export const useDocumentDetailScreen = (): UseBottomSheetScreenModel => {
+  const { isVisible, contentHeight, handleCloseModal } = useBottomSheetScreen(SHEET_SCREEN_RATIO)
 
-  useEffect(() => {
-    if (isVisible) return
-
-    const dismissal = InteractionManager.runAfterInteractions(goBack)
-
-    return () => dismissal.cancel()
-  }, [isVisible, goBack])
-
-  return {
-    isVisible,
-    contentHeight: height * SHEET_SCREEN_RATIO,
-    handleCloseModal: () => setIsVisible(false),
-  }
+  return { isVisible, contentHeight, handleCloseModal }
 }

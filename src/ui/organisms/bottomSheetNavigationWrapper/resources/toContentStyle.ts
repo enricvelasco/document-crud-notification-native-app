@@ -1,7 +1,9 @@
 import type { StyleProp, ViewStyle } from 'react-native'
 
-export const toContentStyle = (contentHeight?: number): StyleProp<ViewStyle> => {
-  if (contentHeight === undefined) return undefined
+import { styles } from '../styles'
 
-  return { height: contentHeight }
+export const toContentStyle = (contentHeight?: number): StyleProp<ViewStyle> => {
+  if (contentHeight === undefined) return styles.content
+
+  return [styles.content, { height: contentHeight }]
 }
