@@ -862,3 +862,32 @@ alternative it beat and what it cost. Ordered oldest first.
   in its first entry not to rely on.
 
 ---
+
+## Report a broken notification feed on the badge itself, not beside it
+`2026-09-11` · `src/ui/atoms/badge/` · `src/screens/documentListScreen/`
+
+> The bell already knew the stream had died; it just kept showing the last count it had, which reads as current.
+
+- `useNotifications` has exposed `isError` since the stream started giving up
+  after three failures, but nothing painted it. A count nobody can vouch for is
+  worse than no count, because a stale number carries no sign that it is stale.
+- `Badge` takes `isError`: red fill, `!` in place of the number, and visible at
+  zero — the one case a zero count renders anything. The count is ignored rather
+  than cleared, so the pill returns to the number the moment the error lifts.
+- The screen hook reads `count` and `isError` from the context hook and hands
+  them down as `notificationCount` and `hasNotificationError`. The template still
+  takes plain props and never touches the context, so it stays paintable from
+  Storybook. `disabled` wins over `isError` — an inert control should not shout
+  in red while the icon beside it greys out.
+- **Rejected** — a banner or a toast over the list: the failure belongs to the
+  bell, not to the documents, and a dismissible message is gone by the time the
+  user wonders whether the count is real. The badge is exactly where the wrong
+  number would otherwise be.
+- **Cost** — `!` explains nothing on its own, and the red fill says nothing at
+  all to a screen reader, so the accessible label has to swap to
+  `_DOCUMENT_LIST_TEMPLATE_NOTIFICATIONS_ERROR` to carry the state. A fourth
+  palette role (`Colors.error`) now exists for a single pill.
+- **Open** — `startSubscription` is wired and still uncalled: there is no retry
+  from the UI, so the badge reports the failure without offering a way out of it.
+
+---

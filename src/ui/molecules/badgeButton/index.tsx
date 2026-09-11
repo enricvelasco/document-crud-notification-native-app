@@ -15,6 +15,7 @@ export interface BadgeButtonProps {
   icon: ComponentType<IconModel>
   count: number
   accessibilityLabel: string
+  isError?: boolean
   disabled?: boolean
   onPress: () => void
 }
@@ -23,6 +24,7 @@ export const BadgeButton = ({
   icon,
   count,
   accessibilityLabel,
+  isError = false,
   disabled = false,
   onPress,
 }: BadgeButtonProps) => {
@@ -40,7 +42,7 @@ export const BadgeButton = ({
     >
       <Icon size={BADGE_BUTTON_ICON_SIZE} color={iconColor} />
       <View style={styles.badge}>
-        <Badge count={count} disabled={disabled} />
+        <Badge count={count} isError={isError} disabled={disabled} />
       </View>
     </Pressable>
   )

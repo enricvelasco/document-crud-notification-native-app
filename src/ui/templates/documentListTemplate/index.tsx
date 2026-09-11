@@ -12,6 +12,7 @@ import { DocumentListBody } from './components/documentListBody'
 import { DocumentListLayoutTypes, type DocumentListSortTypes, type DocumentListStateModel } from './models'
 import { getDocumentListLayoutOptions } from './resources/getDocumentListLayoutOptions'
 import { getDocumentListSortOptions } from './resources/getDocumentListSortOptions'
+import { getNotificationsLabelKey } from './resources/getNotificationsLabelKey'
 import { isDocumentListSort } from './resources/isDocumentListSort'
 import { useDocumentListTemplate } from './resources/useDocumentListTemplate'
 import { styles } from './styles'
@@ -27,6 +28,7 @@ export interface DocumentListTemplateProps {
   isRefreshing?: boolean
   onRefresh?: () => void
   notificationCount?: number
+  hasNotificationError?: boolean
   initialLayout?: DocumentListLayoutTypes
 }
 
@@ -39,6 +41,7 @@ export const DocumentListTemplate = ({
   isRefreshing,
   onRefresh,
   notificationCount = 0,
+  hasNotificationError = false,
   initialLayout = DocumentListLayoutTypes.List,
 }: DocumentListTemplateProps) => {
   const translate = useTranslate()
@@ -57,7 +60,8 @@ export const DocumentListTemplate = ({
         <BadgeButton
           icon={BellIcon}
           count={notificationCount}
-          accessibilityLabel={translate('_DOCUMENT_LIST_TEMPLATE_NOTIFICATIONS')}
+          isError={hasNotificationError}
+          accessibilityLabel={translate(getNotificationsLabelKey(hasNotificationError))}
           onPress={onOpenNotifications}
         />
       </View>

@@ -3,7 +3,7 @@ import { StyleSheet, Text, View } from 'react-native'
 import type { Meta, StoryObj } from '@storybook/react-native-web-vite'
 
 import { Colors, Spacing } from '@constants/theme'
-import { BADGE_MAX_COUNT, BADGE_OVERFLOW_LABEL } from '@ui/atoms/badge'
+import { BADGE_ERROR_LABEL, BADGE_MAX_COUNT, BADGE_OVERFLOW_LABEL } from '@ui/atoms/badge'
 import { BellIcon, DocumentIcon, UserGroupIcon } from '@ui/atoms/icons'
 import { BadgeButton } from '@ui/molecules/badgeButton'
 
@@ -28,8 +28,14 @@ const meta = {
           'passes it down. The badge overhangs the border by 2pt and is not hit-testable,',
           'so pressing it presses the button underneath rather than swallowing the tap.',
           '',
+          `\`isError\` hands the badge its error state: red, \`${BADGE_ERROR_LABEL}\`, and visible even`,
+          'at zero. The button itself stays pressable — the counter is broken, not the',
+          'destination — so the user can still open the screen and find out why.',
+          '',
           'With no label to read, `accessibilityLabel` is required rather than optional —',
-          'an icon alone is not a name.',
+          'an icon alone is not a name. Pass a different one when `isError` is set: the',
+          'red pill is invisible to a screen reader, so the label is the only place the',
+          'error can be announced.',
         ].join('\n'),
       },
     },
@@ -51,6 +57,11 @@ const meta = {
       control: 'text',
       description: 'Required — the button has no visible text to announce.',
     },
+    isError: {
+      control: 'boolean',
+      description: 'Handed straight to the badge — red pill, no count, shown even at zero.',
+      table: { defaultValue: { summary: 'false' } },
+    },
     disabled: {
       control: 'boolean',
       description: 'Fades the border, the icon and the badge together, and blocks presses.',
@@ -66,6 +77,7 @@ const meta = {
     icon: BellIcon,
     count: 3,
     accessibilityLabel: 'Notifications',
+    isError: false,
     disabled: false,
     onPress: () => {},
   },
@@ -96,6 +108,24 @@ export const TwoDigits: Story = {
 export const Overflowing: Story = {
   args: {
     count: 350,
+  },
+}
+
+/** The count is unavailable. Still pressable — the screen behind it may explain why. */
+export const ErrorState: Story = {
+  args: {
+    count: 5,
+    isError: true,
+    accessibilityLabel: 'Notifications unavailable',
+  },
+}
+
+/** Nothing counted and the feed is down — the badge appears anyway. */
+export const ErrorAtZero: Story = {
+  args: {
+    count: 0,
+    isError: true,
+    accessibilityLabel: 'Notifications unavailable',
   },
 }
 

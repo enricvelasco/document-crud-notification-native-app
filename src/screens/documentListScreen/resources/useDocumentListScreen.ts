@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 
 import { APP_ROUTES } from '@constants/paths'
 import { useAppNavigation } from '@hooks/useAppNavigation'
+import { useNotifications } from '@hooks/useNotifications'
 import { DocumentListSortTypes, type DocumentListStateModel, DocumentListStateTypes } from '@ui/templates/documentListTemplate'
 
 import { loadDocumentListState, refreshDocumentListState } from './services'
@@ -14,6 +15,8 @@ export interface UseDocumentListScreenModel {
   state: DocumentListStateModel
   sort: DocumentListSortTypes
   isRefreshing: boolean
+  notificationCount: number
+  hasNotificationError: boolean
   handleSortChange: (sort: DocumentListSortTypes) => void
   handleRefresh: () => void
   handleAddDocument: () => void
@@ -22,6 +25,7 @@ export interface UseDocumentListScreenModel {
 
 export const useDocumentListScreen = (): UseDocumentListScreenModel => {
   const { navigateTo } = useAppNavigation()
+  const { count, isError } = useNotifications()
   const [sort, setSort] = useState<DocumentListSortTypes>(DocumentListSortTypes.Title)
   const [state, setState] = useState<DocumentListStateModel>(DOCUMENT_LIST_LOADING_STATE)
   const [isRefreshing, setIsRefreshing] = useState(false)
@@ -53,6 +57,8 @@ export const useDocumentListScreen = (): UseDocumentListScreenModel => {
     state,
     sort,
     isRefreshing,
+    notificationCount: count,
+    hasNotificationError: isError,
     handleSortChange: setSort,
     handleRefresh,
     handleAddDocument,

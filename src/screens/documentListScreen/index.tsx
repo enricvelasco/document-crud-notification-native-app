@@ -7,6 +7,8 @@ export const DocumentListScreen = () => {
     state,
     sort,
     isRefreshing,
+    notificationCount,
+    hasNotificationError,
     handleSortChange,
     handleRefresh,
     handleAddDocument,
@@ -18,6 +20,8 @@ export const DocumentListScreen = () => {
       state={state}
       sort={sort}
       isRefreshing={isRefreshing}
+      notificationCount={notificationCount}
+      hasNotificationError={hasNotificationError}
       onSortChange={handleSortChange}
       onRefresh={handleRefresh}
       onAddDocument={handleAddDocument}

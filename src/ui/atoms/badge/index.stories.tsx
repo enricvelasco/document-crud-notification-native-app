@@ -2,7 +2,12 @@ import { StyleSheet, Text, View } from 'react-native'
 import type { Meta, StoryObj } from '@storybook/react-native-web-vite'
 
 import { Colors, Spacing } from '@constants/theme'
-import { Badge, BADGE_MAX_COUNT, BADGE_OVERFLOW_LABEL } from '@ui/atoms/badge'
+import {
+  Badge,
+  BADGE_ERROR_LABEL,
+  BADGE_MAX_COUNT,
+  BADGE_OVERFLOW_LABEL,
+} from '@ui/atoms/badge'
 
 const meta = {
   title: 'UI/Atoms/Badge',
@@ -25,6 +30,13 @@ const meta = {
           'consumer never has to guard the badge itself — mount it unconditionally',
           'and let the count decide.',
           '',
+          `Error is the exception to that rule: \`isError\` paints the pill red and`,
+          `replaces the number with \`${BADGE_ERROR_LABEL}\`, and it shows at a count of zero too.`,
+          'A count that cannot be trusted is worse than no count — a stale number',
+          'reads as truth, whereas the red pill says the figure is unavailable. The',
+          'count is ignored rather than hidden, so the consumer keeps passing it and',
+          'the badge goes back to the number the moment the error clears.',
+          '',
           'The 2pt ring is painted in `Colors.background.default`, not left',
           'transparent. That is what keeps the pill legible when it overlaps a border',
           'or an icon underneath instead of blending into it.',
@@ -41,15 +53,27 @@ const meta = {
         `${BADGE_MAX_COUNT} renders \`${BADGE_OVERFLOW_LABEL}\`.`,
       ].join(' '),
     },
+    isError: {
+      control: 'boolean',
+      description: [
+        `Paints the pill \`Colors.error.default\` and shows \`${BADGE_ERROR_LABEL}\` instead of the count.`,
+        'Visible even at zero.',
+      ].join(' '),
+      table: { defaultValue: { summary: 'false' } },
+    },
     disabled: {
       control: 'boolean',
-      description: 'Drops the fill to `Colors.border.dark` so the pill mutes with its host control.',
+      description: [
+        'Drops the fill to `Colors.border.dark` so the pill mutes with its host control.',
+        'Wins over `isError`, matching the icon that greys out beside it.',
+      ].join(' '),
       table: { defaultValue: { summary: 'false' } },
     },
   },
 
   args: {
     count: 3,
+    isError: false,
     disabled: false,
   },
 } satisfies Meta<typeof Badge>
@@ -89,10 +113,35 @@ export const Empty: Story = {
   },
 }
 
+/** The count could not be trusted, so it is not shown at all. */
+export const ErrorState: Story = {
+  args: {
+    count: 8,
+    isError: true,
+  },
+}
+
+/** An error with nothing counted yet still paints — this is the one case zero is visible. */
+export const ErrorAtZero: Story = {
+  args: {
+    count: 0,
+    isError: true,
+  },
+}
+
 /** Muted alongside a disabled host control. */
 export const Disabled: Story = {
   args: {
     count: 7,
+    disabled: true,
+  },
+}
+
+/** Disabled wins: an inert control does not shout in red. */
+export const ErrorDisabled: Story = {
+  args: {
+    count: 8,
+    isError: true,
     disabled: true,
   },
 }
@@ -107,6 +156,26 @@ export const Scale: Story = {
           <Text style={styles.caption}>{count}</Text>
         </View>
       ))}
+    </View>
+  ),
+}
+
+/** Count beside error: same pill, two meanings, told apart by colour alone. */
+export const States: Story = {
+  render: ({ count }) => (
+    <View style={styles.row}>
+      <View style={styles.sample}>
+        <Badge count={count} />
+        <Text style={styles.caption}>count</Text>
+      </View>
+      <View style={styles.sample}>
+        <Badge count={count} isError />
+        <Text style={styles.caption}>error</Text>
+      </View>
+      <View style={styles.sample}>
+        <Badge count={count} disabled />
+        <Text style={styles.caption}>disabled</Text>
+      </View>
     </View>
   ),
 }
