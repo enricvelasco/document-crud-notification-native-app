@@ -1,4 +1,4 @@
-import { ScrollView, Text, View } from 'react-native'
+import { Text, View } from 'react-native'
 
 import { useTranslate } from '@hooks/useTranslate'
 import { InputText } from '@ui/atoms/inputText'
@@ -41,9 +41,9 @@ export const NewDocumentFormTemplate = ({ onSubmit, onClose }: NewDocumentFormTe
         onClose={onClose}
       />
 
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <Text style={styles.title}>{translate('_NEW_DOCUMENT_FORM_TEMPLATE_TITLE')}</Text>
+      <Text style={styles.title}>{translate('_NEW_DOCUMENT_FORM_TEMPLATE_TITLE')}</Text>
 
+      <View style={styles.content}>
         <LabelInput
           label={translate('_NEW_DOCUMENT_FORM_TEMPLATE_NAME_LABEL')}
           input={InputText}
@@ -78,7 +78,7 @@ export const NewDocumentFormTemplate = ({ onSubmit, onClose }: NewDocumentFormTe
         />
 
         {errorMessage ? <NewDocumentFormMessage message={errorMessage} /> : null}
-      </ScrollView>
+      </View>
 
       <View style={styles.footer}>
         <PrimaryButton

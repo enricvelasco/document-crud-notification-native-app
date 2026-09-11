@@ -968,3 +968,145 @@ a más reciente.
   documento creado además lo descarta.
 
 ---
+
+## Compartir el cierre del sheet-sobre-ruta entre las dos screens de sheet
+`2026-09-11` · `src/hooks/useBottomSheetScreen.ts`
+
+> Un sheet que en realidad es una ruta tiene que cerrarse dos veces — visualmente
+> y luego navegando atrás — y ese doble paso estaba a punto de copiarse y pegarse.
+
+- `/detail` y ahora `/new` son rutas `transparentModal` pintadas como bottom
+  sheet, así que cerrar una implica ocultar el sheet, dejar que termine la
+  animación de salida y solo entonces llamar a `goBack` — si no, la ruta se
+  desmonta a media animación y el sheet desaparece en vez de deslizarse.
+- `useBottomSheetScreen(sheetScreenRatio)` es ahora dueño de esa secuencia — el
+  flag `isVisible`, el aplazamiento con
+  `InteractionManager.runAfterInteractions(goBack)` y su cancelación — y cada
+  screen conserva solo su propia proporción de alto: `0.5` para el detalle,
+  `0.75` para el formulario, que tiene que encajar una cabecera, tres campos y un
+  botón fijado debajo.
+- **Descartado** — copiar el cuerpo de `useDocumentDetailScreen` dentro de
+  `useDocumentNewScreen`. El aplazamiento es de esos detalles que se arreglan en
+  una copia y no en la otra, y un sheet que desaparece en vez de cerrarse pasa
+  desapercibido con facilidad en una revisión.
+- **Coste** — `src/hooks/` guarda ahora un hook que solo pueden usar dos
+  screens, y la proporción de alto pasó a ser un parámetro, así que la
+  proporción de un sheet se decide en el call site mientras su ciclo de vida se
+  decide en el hook.
+- **Abierto** — presentar el formulario como una ruta en lugar de como un flag en
+  `DocumentListScreen` se especificó, no se sopesó aquí, así que la comparación
+  contra el estado inline nunca se argumentó.
+
+> **Superseded** el `2026-09-11` por [Presentar las screens de sheet como rutas formSheet nativas](#presentar-las-screens-de-sheet-como-rutas-formsheet-nativas) — una ruta `formSheet` nativa se cierra sola, así que ya no queda cierre en dos pasos que compartir.
+
+---
+
+## Resolver el submit sin conectar como un éxito en vez de fingir un fallo
+`2026-09-11` · `src/screens/documentNewScreen/resources/services.ts`
+
+> Todavía no hay endpoint de creación, y el contrato del formulario no tiene
+> forma de decir "no ha pasado nada".
+
+- `NewDocumentFormSubmitType` tiene que responder con éxito o con un error que
+  lleva un mensaje, así que un submit que no tiene nada detrás sigue teniendo
+  que elegir uno — y el template actúa según lo que reciba.
+- `submitNewDocumentWithoutPersistence` resuelve con éxito y no hace nada más. Su
+  nombre es toda la advertencia: el día que exista un repository de creación, ese
+  único binding es lo que se reemplaza, y ni la screen ni el template se mueven.
+- **Descartado** — responder con un error tipo "no implementado". Pinta un
+  mensaje rojo que el usuario no puede arreglar ni superar reintentando, y
+  ejercita el camino de fallo justo donde no ha fallado nada.
+- **Coste** — el template limpia sus campos al tener éxito, así que el sheet
+  informa ahora de un documento creado que nunca se guardó. Quien haga una demo
+  de esto verá un flujo de creación que funciona.
+- **Abierto** — si un éxito real debería además descartar el sheet sigue sin
+  responderse, heredado de la entrada del propio template; el stub lo deja
+  abierto.
+
+---
+
+## Entregar todo el ancho del sheet al contenido que trae su propio padding
+`2026-09-11` · `src/ui/organisms/bottomSheetNavigationWrapper/`
+
+> Un template que ya se paddea solo y dibuja reglas de borde a borde no puede
+> vivir dentro del margen de 16pt del propio sheet.
+
+- El `BottomSheet` de `@expo/ui` paddea a sus children por defecto en todas las
+  plataformas — 16pt a los lados — y el wrapper nunca pasaba `contentPadding`,
+  así que lo heredaba. Inofensivo para el texto centrado del sheet de detalle;
+  incorrecto para `NewDocumentFormTemplate`, que es dueño de su padding
+  `Spacing.three` y termina en un footer cuyo borde superior debería cruzar el
+  sheet entero.
+- `hasContentInset` (por defecto `true`) lo decide ahora, y la `View` de
+  contenido se estira a `width: '100%'` en vez de confiar en que el host la
+  dimensione. `DocumentNewScreen` es el único caller que apaga el inset.
+- **Descartado** — quitar el inset para todos. Es el valor correcto para
+  contenido que no trae padding propio, que es justo lo que demuestran los
+  stories del wrapper, y quitarlo reespaciaría ese contenido en silencio.
+- **Coste** — un cuarto booleano en un wrapper que ya llevaba tres, y una regla
+  de layout que el caller tiene que conocer: si apagas el inset, el padding pasa
+  a ser tu problema.
+
+> **Superseded** el `2026-09-11` por [Presentar las screens de sheet como rutas formSheet nativas](#presentar-las-screens-de-sheet-como-rutas-formsheet-nativas) — el contenido de la ruta llena el sheet, así que no hay inset de wrapper del que salirse.
+
+---
+
+## Separar por nombre los dos colores del sheet en vez de llamar background al scrim
+`2026-09-11` · `src/ui/organisms/bottomSheetNavigationWrapper/styles.ts`
+
+> Una prop llamada `backgroundColor` estaba pintando lo que hay detrás del sheet,
+> no el sheet.
+
+- `BOTTOM_SHEET_NAVIGATION_WRAPPER_BACKGROUND_COLOR` era un negro translúcido que
+  alimentaba `scrimColor`, así que el chrome propio del sheet — la zona del drag
+  indicator y, en iOS, el inset del home indicator — se quedaba con el valor por
+  defecto de la plataforma y se leía como un borde gris alrededor de un
+  formulario que se pinta a sí mismo con `Colors.background.default`.
+- Ahora están separados: `backgroundColor` es la superficie del sheet, conectada
+  a `containerColor` y con el blanco del theme por defecto, y `scrimColor` es el
+  velo de detrás, que conserva el negro translúcido.
+- **Descartado** — poner el constant existente en blanco donde estaba, siguiendo
+  conectado al scrim. Habría dejado la lista de detrás en blanco opaco en Android
+  en vez de atenuarla, y el borde gris se habría quedado igual.
+- **Coste** — una quinta prop, y la matriz de plataformas se ensancha en vez de
+  estrecharse: la superficie llega a Android, iOS 16.4+ y web; el velo solo a
+  Android.
+- **Abierto** — el velo sigue siendo un `#00000066` literal. La paleta no tiene
+  ningún rol translúcido del que sacarlo, así que se queda en hex hasta que
+  exista uno.
+
+> **Superseded** el `2026-09-11` por [Presentar las screens de sheet como rutas formSheet nativas](#presentar-las-screens-de-sheet-como-rutas-formsheet-nativas) — la plataforma pinta superficie y scrim; solo la superficie sigue siendo nuestra, vía `contentStyle`.
+
+---
+
+## Presentar las screens de sheet como rutas formSheet nativas
+`2026-09-11` · `src/app/_layout.tsx`
+
+> El sheet se estaba construyendo dos veces: una por el navegador al presentar la
+> ruta, y otra por un componente que presentaba un sheet dentro de ella.
+
+- `/detail` y `/new` eran rutas `transparentModal`, cada una pintando un
+  `BottomSheetNavigationWrapper` alrededor del `BottomSheet` de `@expo/ui`. Un
+  modal dentro de un modal, así que cerrar costaba dos pasos en un orden fijo
+  —ocultar el sheet, esperar su animación, y entonces sacar la ruta— y cada
+  asunto del sheet (scrim, inset, color de superficie, qué gestos cierran) había
+  que volver a exponerlo como prop.
+- expo-router llega al mismo sheet nativo desde la declaración de la ruta:
+  `presentation: 'formSheet'` con `sheetAllowedDetents` conservando las alturas
+  que tenían los ratios (`0.5` para el detalle, `0.75` para el formulario). Las
+  screens pintan ahora su contenido y nada más, y el cierre es de la plataforma.
+- Eso ha borrado el wrapper y sus diez ficheros, el aplazamiento de
+  `useBottomSheetScreen`, `useDocumentDetailScreen` entero, y con ellos las props
+  de inset y de color que las dos entradas de arriba acababan de introducir.
+- **Descartado** — conservar el wrapper por las escapatorias que documentaban sus
+  stories: modifiers de cierre por plataforma y un color de scrim para Android.
+  Ninguna ruta llegó a pasarlos nunca, así que eran mandos sin nadie al mando.
+- **Coste** — el control que queda es el que expone el navegador.
+  `sheetGrabberVisible` es solo de iOS, la lista de detents es toda la API de
+  dimensionado, y los interruptores separados de swipe y backdrop ya no existen.
+  `@expo/ui` es ahora una dependencia sin uso.
+- **Abierto** — esto no se ha ejecutado en dispositivo. Si `0.75` deja los campos
+  del formulario libres del teclado es justo lo que tiene que responder la
+  prueba; un segundo detent (`[0.75, 1]`) es la palanca si no lo hace.
+
+---

@@ -923,3 +923,139 @@ alternative it beat and what it cost. Ordered oldest first.
   a created document also dismisses it.
 
 ---
+
+## Share the sheet-over-route dismissal between both sheet screens
+`2026-09-11` · `src/hooks/useBottomSheetScreen.ts`
+
+> A sheet that is really a route has to close twice — visually, then by
+> navigating back — and that two-step was about to be copy-pasted.
+
+- `/detail` and now `/new` are both `transparentModal` routes painted as a
+  bottom sheet, so closing one means hiding the sheet, letting the exit
+  animation finish, and only then calling `goBack` — otherwise the route
+  unmounts mid-animation and the sheet vanishes instead of sliding away.
+- `useBottomSheetScreen(sheetScreenRatio)` now owns that sequence — the
+  `isVisible` flag, the `InteractionManager.runAfterInteractions(goBack)`
+  deferral and its cancellation — and each screen keeps only its own height
+  ratio: `0.5` for detail, `0.75` for the form, which has to fit a header, three
+  fields and a button pinned below them.
+- **Rejected** — copying `useDocumentDetailScreen`'s body into
+  `useDocumentNewScreen`. The deferral is the kind of detail that gets fixed in
+  one copy and not the other, and a sheet that disappears instead of closing is
+  easy to miss in review.
+- **Cost** — `src/hooks/` now holds a hook only two screens can use, and the
+  height ratio became a parameter, so a sheet's proportion is decided at the
+  call site while its lifecycle is decided in the hook.
+- **Open** — presenting the form as a route rather than as a flag on
+  `DocumentListScreen` was specified rather than weighed here, so the trade-off
+  against inline state was never argued.
+
+> **Superseded** on `2026-09-11` by [Present the sheet screens as native formSheet routes](#present-the-sheet-screens-as-native-formsheet-routes) — a native `formSheet` route pops itself, so there is no two-step dismissal left to share.
+
+---
+
+## Resolve the unwired submit as a success instead of faking a failure
+`2026-09-11` · `src/screens/documentNewScreen/resources/services.ts`
+
+> There is no create endpoint yet, and the form's contract has no way to say
+> "nothing happened".
+
+- `NewDocumentFormSubmitType` must answer with either success or an error
+  carrying a message, so a submit with nothing behind it still has to pick one —
+  and the template acts on whichever it gets.
+- `submitNewDocumentWithoutPersistence` resolves success and does nothing else.
+  Its name is the whole disclosure: the day a create repository exists, that one
+  binding is what gets replaced, and neither the screen nor the template moves.
+- **Rejected** — answering with an error such as "not implemented". It paints a
+  red message the user can neither fix nor retry past, and it exercises the
+  failure path in the one place where nothing actually failed.
+- **Cost** — the template clears its fields on success, so the sheet now reports
+  a document created that was never stored. Anyone demoing this sees a create
+  flow that works.
+- **Open** — whether a real success should also dismiss the sheet is still
+  unanswered, carried over from the template's own entry; the stub leaves it
+  open.
+
+---
+
+## Hand the sheet's full width to content that brings its own padding
+`2026-09-11` · `src/ui/organisms/bottomSheetNavigationWrapper/`
+
+> A template that already pads itself and draws edge-to-edge rules cannot live
+> inside the sheet's own 16pt gutter.
+
+- `@expo/ui`'s `BottomSheet` pads its children by default on every platform —
+  16pt sideways — and the wrapper never passed `contentPadding`, so it inherited
+  that. Harmless for the detail sheet's centred text; wrong for
+  `NewDocumentFormTemplate`, which owns its `Spacing.three` padding and ends in a
+  footer whose top border is supposed to span the sheet.
+- `hasContentInset` (default `true`) now decides it, and the inner content `View`
+  stretches to `width: '100%'` rather than relying on the host to size it.
+  `DocumentNewScreen` is the one caller that turns the inset off.
+- **Rejected** — dropping the inset for everyone. It is the right default for
+  content that brings no padding of its own, which is exactly what the wrapper's
+  stories demonstrate, and removing it would silently re-space that content.
+- **Cost** — a fourth boolean on a wrapper that already carries three, and a
+  layout rule the caller has to know about: turn the inset off and the padding
+  becomes your problem.
+
+> **Superseded** on `2026-09-11` by [Present the sheet screens as native formSheet routes](#present-the-sheet-screens-as-native-formsheet-routes) — the route's content fills the sheet, so there is no wrapper inset to opt out of.
+
+---
+
+## Name the sheet's two colours apart instead of calling the scrim a background
+`2026-09-11` · `src/ui/organisms/bottomSheetNavigationWrapper/styles.ts`
+
+> One prop called `backgroundColor` was painting the thing behind the sheet, not
+> the sheet.
+
+- `BOTTOM_SHEET_NAVIGATION_WRAPPER_BACKGROUND_COLOR` was a translucent black fed
+  to `scrimColor`, so the sheet's own chrome — the drag-indicator zone and, on
+  iOS, the home-indicator inset — kept the platform default and read as a grey
+  rim around a form that paints itself `Colors.background.default`.
+- The two are now separate: `backgroundColor` is the sheet's surface, wired to
+  `containerColor` and defaulting to the theme's white, and `scrimColor` is the
+  veil behind it, keeping the translucent black.
+- **Rejected** — turning the existing constant white where it was, still wired to
+  the scrim. It would have whited out the list behind the sheet on Android
+  instead of dimming it, and left the grey rim exactly as it was.
+- **Cost** — a fifth prop, and the platform matrix got wider rather than
+  narrower: the surface lands on Android, iOS 16.4+ and web, the veil on Android
+  alone.
+- **Open** — the veil is still a literal `#00000066`. The palette has no
+  translucent role to source it from, so it stays a hex until one exists.
+
+> **Superseded** on `2026-09-11` by [Present the sheet screens as native formSheet routes](#present-the-sheet-screens-as-native-formsheet-routes) — the platform paints both the surface and the scrim; only the surface stays ours, via `contentStyle`.
+
+---
+
+## Present the sheet screens as native formSheet routes
+`2026-09-11` · `src/app/_layout.tsx`
+
+> The sheet was being built twice: once by the navigator presenting the route,
+> and again by a component presenting a sheet inside it.
+
+- `/detail` and `/new` were `transparentModal` routes, each rendering a
+  `BottomSheetNavigationWrapper` around `@expo/ui`'s `BottomSheet`. A modal
+  inside a modal, so closing took two steps in a fixed order — hide the sheet,
+  wait out its animation, then pop the route — and every sheet concern (scrim,
+  inset, surface colour, which gestures dismiss) had to be re-exposed as a prop.
+- expo-router reaches the same native sheet from the route declaration:
+  `presentation: 'formSheet'` with `sheetAllowedDetents` keeping the heights the
+  ratios had (`0.5` for detail, `0.75` for the form). The screens now render
+  their content and nothing else, and dismissal is the platform's.
+- That deleted the wrapper and its ten files, the `useBottomSheetScreen`
+  deferral, `useDocumentDetailScreen` in full, and with them the inset and
+  colour props the two entries above had just introduced.
+- **Rejected** — keeping the wrapper for the escape hatches its stories
+  documented: per-platform dismissal modifiers and an Android scrim colour.
+  Neither route ever passed them, so they were knobs with no hand on them.
+- **Cost** — the control that is left is what the navigator exposes.
+  `sheetGrabberVisible` is iOS-only, the detent list is the whole sizing API, and
+  the separate swipe/backdrop dismissal switches are gone. `@expo/ui` is now an
+  unused dependency.
+- **Open** — this was not run on a device. Whether `0.75` leaves the form's
+  fields clear of the keyboard is exactly what the try-out has to answer; a
+  second detent (`[0.75, 1]`) is the lever if it does not.
+
+---
