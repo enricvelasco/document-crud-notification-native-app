@@ -2,7 +2,7 @@ import { ViewSectionStatusTypes } from '@core/views/documentListView'
 import { documentListItemsMock } from '@core/views/documentListView/mocks/documentListViewMock'
 import { DocumentListStateTypes } from '@ui/templates/documentListTemplate'
 
-import { loadDocumentListState, logDocumentListError } from './resources/services'
+import { loadDocumentListState, logDocumentListError, refreshDocumentListState } from './resources/services'
 import { toDocumentListState } from './resources/utils'
 
 jest.mock('@services/http', () => ({
@@ -93,5 +93,59 @@ describe('loadDocumentListState', () => {
     await loadDocumentListState(setState, new AbortController().signal)
 
     expect(setState).not.toHaveBeenCalled()
+  })
+})
+
+describe('refreshDocumentListState', () => {
+  it('raises the refreshing flag, applies the state and lowers it again', async () => {
+    const setState = jest.fn()
+    const setIsRefreshing = jest.fn()
+    loadDocumentListViewMock.mockResolvedValue({ documents: okSection })
+
+    await refreshDocumentListState({
+      setState,
+      setIsRefreshing,
+      signal: new AbortController().signal,
+    })
+
+    expect(setIsRefreshing.mock.calls).toEqual([[true], [false]])
+    expect(setState).toHaveBeenCalledWith({
+      type: DocumentListStateTypes.Content,
+      documents: documentListItemsMock,
+    })
+  })
+
+  it('replaces the documents with the controlled message when the reload fails', async () => {
+    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined)
+    const setState = jest.fn()
+    const setIsRefreshing = jest.fn()
+    loadDocumentListViewMock.mockResolvedValue({ documents: errorSection })
+
+    await refreshDocumentListState({
+      setState,
+      setIsRefreshing,
+      signal: new AbortController().signal,
+    })
+
+    expect(setState).toHaveBeenCalledWith({
+      type: DocumentListStateTypes.Error,
+      message: 'The documents could not be loaded.',
+    })
+    consoleErrorSpy.mockRestore()
+  })
+
+  it('lowers the refreshing flag even when the reload was aborted', async () => {
+    const setState = jest.fn()
+    const setIsRefreshing = jest.fn()
+    loadDocumentListViewMock.mockResolvedValue({ documents: abortedSection })
+
+    await refreshDocumentListState({
+      setState,
+      setIsRefreshing,
+      signal: new AbortController().signal,
+    })
+
+    expect(setState).not.toHaveBeenCalled()
+    expect(setIsRefreshing.mock.calls).toEqual([[true], [false]])
   })
 })

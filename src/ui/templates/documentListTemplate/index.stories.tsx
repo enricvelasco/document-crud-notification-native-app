@@ -94,6 +94,11 @@ const meta = {
           'Layout changes nothing beyond this page, so the template keeps it itself',
           'and `initialLayout` only says where it starts.',
           '',
+          'Refreshing belongs to the content block alone. Pulling the documents down',
+          'asks the screen for fresh ones without ever swapping the body for the',
+          'loading state — the rows stay on screen under the spinner, which is the',
+          'whole point of the gesture.',
+          '',
           'The template holds its own copy. The atoms and molecules underneath it',
           'take plain strings and stay reusable; this page is rendered once, so it',
           'reads its labels from the translation catalogue rather than making the',
@@ -128,6 +133,17 @@ const meta = {
       control: false,
       description: 'Called by the bell in the header.',
     },
+    isRefreshing: {
+      control: 'boolean',
+      description: [
+        'Whether a pull-to-refresh reload is in flight. Controlled by the screen,',
+        'and deliberately not the loading state — the documents stay painted.',
+      ].join(' '),
+    },
+    onRefresh: {
+      control: false,
+      description: 'Called when the documents are pulled down. Omitting it removes the gesture.',
+    },
     notificationCount: {
       control: { type: 'number', min: 0, max: 99 },
       description: 'What the bell badge shows.',
@@ -146,6 +162,7 @@ const meta = {
     onSortChange: () => {},
     onAddDocument: () => {},
     onOpenNotifications: () => {},
+    onRefresh: () => {},
   },
 } satisfies Meta<typeof DocumentListTemplate>
 
@@ -191,5 +208,12 @@ export const Empty: Story = {
 export const WithoutNotifications: Story = {
   args: {
     notificationCount: 0,
+  },
+}
+
+/** A pull-to-refresh in flight. The documents stay put; only the spinner is new. */
+export const Refreshing: Story = {
+  args: {
+    isRefreshing: true,
   },
 }

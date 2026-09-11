@@ -6,7 +6,9 @@ export const DocumentListScreen = () => {
   const {
     state,
     sort,
+    isRefreshing,
     handleSortChange,
+    handleRefresh,
     handleAddDocument,
     handleOpenNotifications,
   } = useDocumentListScreen()
@@ -15,7 +17,9 @@ export const DocumentListScreen = () => {
     <DocumentListTemplate
       state={state}
       sort={sort}
+      isRefreshing={isRefreshing}
       onSortChange={handleSortChange}
+      onRefresh={handleRefresh}
       onAddDocument={handleAddDocument}
       onOpenNotifications={handleOpenNotifications}
     />

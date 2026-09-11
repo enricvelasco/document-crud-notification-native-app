@@ -6,14 +6,23 @@ import { DocumentListMessage } from '../documentListMessage'
 export interface DocumentListBodyProps {
   state: DocumentListStateModel
   layout: DocumentListLayoutTypes
+  isRefreshing?: boolean
+  onRefresh?: () => void
 }
 
-export const DocumentListBody = ({ state, layout }: DocumentListBodyProps) => {
+export const DocumentListBody = ({ state, layout, isRefreshing, onRefresh }: DocumentListBodyProps) => {
   if (state.type === DocumentListStateTypes.Loading) return <DocumentListLoading />
 
   if (state.type === DocumentListStateTypes.Error) {
     return <DocumentListMessage message={state.message} />
   }
 
-  return <DocumentListContent documents={state.documents} layout={layout} />
+  return (
+    <DocumentListContent
+      documents={state.documents}
+      layout={layout}
+      isRefreshing={isRefreshing}
+      onRefresh={onRefresh}
+    />
+  )
 }

@@ -552,3 +552,96 @@ alternative it beat and what it cost. Ordered oldest first.
   two the pattern already had.
 
 ---
+
+## Give the pull-to-refresh gesture to `List` instead of to a wrapper
+`2026-09-11` · `src/ui/molecules/list/`
+
+> The gesture belongs to whatever scrolls, and only one component in this app is
+> allowed to scroll.
+
+- `List` is the single place that talks to `FlatList`, so it is also the only
+  place that can hand a `RefreshControl` to the `refreshControl` prop the
+  gesture actually needs.
+- That prop takes an element, not a component: on Android `ScrollView` clones it
+  and makes it the parent of the scroll view itself, so it has to be the real
+  `RefreshControl` and not a wrapper of ours.
+- `onRefresh` is what turns the gesture on — without it the prop stays
+  `undefined`, so a list nobody can refresh never grows the Android
+  swipe-refresh wrapper either.
+- `isRefreshing` stays with the caller, because only the caller knows when its
+  reload finished — `List` never lowers the spinner by itself.
+- **Rejected** — a `pullToRefreshBox` wrapping the list: a wrapper can only
+  bring its own `ScrollView`, and nesting a virtualised list inside one trades
+  virtualisation away for a gesture `FlatList` already exposes.
+- **Cost** — two more props on a molecule that had five, and the gesture reaches
+  only what `List` paints: the error state is a plain `View` and cannot be
+  pulled.
+
+---
+
+## Keep refreshing beside the list state rather than inside it
+`2026-09-11` · `src/screens/documentListScreen/` · `src/ui/templates/documentListTemplate/`
+
+> A refresh that paints the loading state hides the very rows the gesture is
+> pulling on.
+
+- `DocumentListStateModel` already had `Loading`, and reusing it for a refresh
+  would swap the body for a spinner — the documents vanish the moment you pull
+  them.
+- `isRefreshing` travels beside `state` from the screen to the template, so the
+  content block stays painted and `RefreshControl` draws over it.
+- The refreshed result still goes through the same `toDocumentListState`, so a
+  reload that fails replaces the rows with the controlled error message exactly
+  as the first load would.
+- **Rejected** — a fourth `DocumentListStateTypes.Refreshing` carrying the
+  current documents: it duplicates the content case for the sole purpose of
+  tagging it, and every consumer grows a branch that paints the same thing.
+- **Cost** — two ways to say "loading" on one screen, and the reader has to know
+  which of them blanks the body.
+
+---
+
+## Refresh through the abort controller the screen already owns
+`2026-09-11` · `src/screens/documentListScreen/resources/`
+
+> A reload started by a gesture deserves the same cancellation as the one
+> started by mounting.
+
+- The mount effect already owned an `AbortController` aborted on unmount, but a
+  refresh fired just before navigating away had nothing cancelling it.
+- The effect now keeps that controller in a ref, and `handleRefresh` passes its
+  signal down the same path `loadDocumentListState` already threads to `fetch`.
+- `refreshDocumentListState` raises the flag, awaits the load and lowers it
+  again — including on an abort, where `toDocumentListState` returns `null` and
+  no state is written.
+- **Rejected** — a fresh controller per refresh: it would let a second pull
+  cancel the first, but it needs its own bookkeeping to stay tied to unmount,
+  which is the cancellation that actually matters here.
+- **Cost** — two pulls in quick succession both run to completion, and the later
+  answer wins by arriving last rather than by design.
+
+---
+
+## Build the `RefreshControl` inline rather than behind a `to*` resource
+`2026-09-11` · `src/ui/molecules/list/`
+
+> A `to*` name promises a mapper, and the thing it was naming returned JSX.
+
+- The refresh control started as `toListRefreshControl` in `resources/`, beside
+  `toListColumnStyle` and `toListContentStyle` — which return styles, not
+  elements.
+- Everything prefixed `to*` in this repo is a mapper, so the name told a reader
+  to expect data and handed them a component instead.
+- Promoting it to a `ListRefreshControl` component was the obvious fix and the
+  wrong one: `refreshControl` takes an element that Android clones as the scroll
+  view's parent, so the wrapper would have to forward the `style` and `children`
+  React Native injects, and the call site would need a cast.
+- It is now a ternary inside `List` choosing between an element and `undefined`,
+  which is a choice between two values rather than a branch worth a file.
+- **Rejected** — keeping the extraction under a `get*` name: it satisfies the
+  convention while leaving a one-caller file whose only job is to hold JSX that
+  reads perfectly well where it is used.
+- **Cost** — `List` now carries an eight-line prop in its JSX, and the next
+  control it grows will push toward the same question again.
+
+---

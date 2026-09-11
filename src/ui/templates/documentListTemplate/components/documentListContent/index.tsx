@@ -9,9 +9,16 @@ import { DocumentListMessage } from '../documentListMessage'
 export interface DocumentListContentProps {
   documents: readonly DocumentListItemModel[]
   layout: DocumentListLayoutTypes
+  isRefreshing?: boolean
+  onRefresh?: () => void
 }
 
-export const DocumentListContent = ({ documents, layout }: DocumentListContentProps) => {
+export const DocumentListContent = ({
+  documents,
+  layout,
+  isRefreshing,
+  onRefresh,
+}: DocumentListContentProps) => {
   const translate = useTranslate()
 
   return (
@@ -21,6 +28,8 @@ export const DocumentListContent = ({ documents, layout }: DocumentListContentPr
       keyExtractor={(document) => document.id}
       renderItem={(document) => <DocumentListCard document={document} layout={layout} />}
       empty={<DocumentListMessage message={translate('_DOCUMENT_LIST_TEMPLATE_EMPTY')} />}
+      isRefreshing={isRefreshing}
+      onRefresh={onRefresh}
     />
   )
 }

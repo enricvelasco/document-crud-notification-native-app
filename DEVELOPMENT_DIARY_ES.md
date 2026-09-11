@@ -584,3 +584,100 @@ a más reciente.
   las dos que el patrón ya tenía.
 
 ---
+
+## Dar el gesto de pull-to-refresh a `List` en lugar de a un wrapper
+`2026-09-11` · `src/ui/molecules/list/`
+
+> El gesto pertenece a lo que hace scroll, y en esta app solo hay un componente
+> con permiso para hacer scroll.
+
+- `List` es el único sitio que habla con `FlatList`, así que también es el único
+  que puede entregar un `RefreshControl` a la prop `refreshControl` que el gesto
+  necesita de verdad.
+- Esa prop recibe un elemento, no un componente: en Android `ScrollView` lo
+  clona y lo convierte en el padre del propio scroll view, así que tiene que ser
+  el `RefreshControl` de verdad y no un wrapper nuestro.
+- `onRefresh` es lo que enciende el gesto — sin él la prop se queda en
+  `undefined`, de modo que una lista que nadie puede refrescar tampoco se gana
+  el wrapper de swipe-refresh de Android.
+- `isRefreshing` se queda en quien llama, porque solo quien llama sabe cuándo ha
+  terminado su recarga — `List` nunca baja el spinner por su cuenta.
+- **Descartado** — un `pullToRefreshBox` envolviendo la lista: un wrapper solo
+  puede aportar su propio `ScrollView`, y meter una lista virtualizada dentro de
+  uno cambia la virtualización por un gesto que `FlatList` ya expone.
+- **Coste** — dos props más en una molecule que tenía cinco, y el gesto alcanza
+  únicamente lo que pinta `List`: el estado de error es una `View` normal y no
+  se puede estirar.
+
+---
+
+## Mantener el refresco al lado del estado de la lista y no dentro de él
+`2026-09-11` · `src/screens/documentListScreen/` · `src/ui/templates/documentListTemplate/`
+
+> Un refresco que pinta el estado de carga esconde justo las filas de las que el
+> gesto está tirando.
+
+- `DocumentListStateModel` ya tenía `Loading`, y reutilizarlo para un refresco
+  cambiaría el cuerpo por un spinner — los documentos desaparecen en el momento
+  en que tiras de ellos.
+- `isRefreshing` viaja al lado de `state` desde la screen hasta el template, así
+  que el bloque de contenido sigue pintado y el `RefreshControl` se dibuja
+  encima.
+- El resultado del refresco pasa igualmente por el mismo `toDocumentListState`,
+  de modo que una recarga fallida sustituye las filas por el mensaje de error
+  controlado exactamente igual que haría la primera carga.
+- **Descartado** — un cuarto `DocumentListStateTypes.Refreshing` cargando con
+  los documentos actuales: duplica el caso de contenido con el único fin de
+  etiquetarlo, y todo consumidor gana una rama que pinta lo mismo.
+- **Coste** — dos maneras de decir «cargando» en una misma pantalla, y quien lee
+  tiene que saber cuál de las dos vacía el cuerpo.
+
+---
+
+## Refrescar con el abort controller que la screen ya tiene
+`2026-09-11` · `src/screens/documentListScreen/resources/`
+
+> Una recarga lanzada por un gesto merece la misma cancelación que la lanzada al
+> montar.
+
+- El efecto de montaje ya tenía un `AbortController` que se aborta al
+  desmontar, pero un refresco disparado justo antes de salir de la pantalla no
+  tenía nada que lo cancelara.
+- El efecto guarda ahora ese controller en una ref, y `handleRefresh` pasa su
+  signal por el mismo camino que `loadDocumentListState` ya enhebra hasta
+  `fetch`.
+- `refreshDocumentListState` levanta el flag, espera la carga y lo vuelve a
+  bajar — también en un abort, donde `toDocumentListState` devuelve `null` y no
+  se escribe ningún estado.
+- **Descartado** — un controller nuevo por refresco: permitiría que un segundo
+  tirón cancelase al primero, pero necesita su propia contabilidad para seguir
+  atado al desmontaje, que es la cancelación que aquí importa de verdad.
+- **Coste** — dos tirones seguidos se ejecutan ambos hasta el final, y gana la
+  respuesta que llega más tarde por llegar la última, no por diseño.
+
+---
+
+## Construir el `RefreshControl` inline en vez de tras un resource `to*`
+`2026-09-11` · `src/ui/molecules/list/`
+
+> Un nombre `to*` promete un mapper, y lo que estaba nombrando devolvía JSX.
+
+- El refresh control nació como `toListRefreshControl` dentro de `resources/`,
+  junto a `toListColumnStyle` y `toListContentStyle` — que devuelven estilos, no
+  elementos.
+- Todo lo que lleva el prefijo `to*` en este repo es un mapper, así que el
+  nombre le decía a quien lee que esperara datos y le entregaba un componente.
+- Ascenderlo a un componente `ListRefreshControl` era el arreglo evidente y el
+  equivocado: `refreshControl` recibe un elemento que Android clona como padre
+  del scroll view, así que el wrapper tendría que reenviar el `style` y los
+  `children` que inyecta React Native, y el call site necesitaría un cast.
+- Ahora es un ternario dentro de `List` que elige entre un elemento y
+  `undefined`, que es una elección entre dos valores y no una rama que merezca
+  un archivo.
+- **Descartado** — mantener la extracción con un nombre `get*`: cumple la
+  convención dejando un archivo de un solo llamante cuyo único trabajo es
+  guardar JSX que se lee perfectamente donde se usa.
+- **Coste** — `List` carga ahora con una prop de ocho líneas en su JSX, y el
+  próximo control que le crezca empujará otra vez hacia la misma pregunta.
+
+---
