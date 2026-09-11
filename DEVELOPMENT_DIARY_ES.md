@@ -935,3 +935,259 @@ a más reciente.
   retry desde la UI, así que el badge informa del fallo sin ofrecer una salida.
 
 ---
+
+## Que el formulario de nuevo documento sea dueño de sus campos y `onSubmit` del resultado
+`2026-09-11` · `src/ui/templates/newDocumentFormTemplate/`
+
+> El template puede sostener un nombre a medio escribir, pero no le corresponde
+> decidir qué le dice al usuario una creación fallida.
+
+- El formulario tiene tres campos, un botón de envío y un camino de fallo. Subir
+  los valores a la screen supone re-renderizar todo el sheet en cada pulsación
+  por un estado que nadie por encima del template puede aprovechar; dejar el
+  fallo dentro supone que el template se invente el texto de una llamada que no
+  ha hecho.
+- El reparto sigue a quién puede responder la pregunta. Los valores,
+  `isSubmitting` y si el botón es pulsable se quedan en
+  `useNewDocumentFormTemplate`; `onSubmit` recibe los valores y responde con un
+  `NewDocumentFormResponseModel` — éxito, o error con su propio `message` — y el
+  template se limita a pintarlo.
+- Un error deja los campos tal cual se escribieron para que reintentar no cueste
+  nada, y los bloquea en lugar de cambiar el formulario por un spinner, así que
+  lo que se está creando sigue legible mientras está en vuelo.
+- **Descartado** — `onSubmit: () => void` con una prop `errorMessage` aparte, la
+  forma que usa `DocumentListTemplate` para su state. Allí funciona porque la
+  screen es dueña de los documentos; aquí obligaría a la screen a sostener un
+  estado cuyo único lector es el template, y a mantenerlo al día con un envío que
+  el template ya controla.
+- **Coste** — ahora conviven dos formas de fallar: una promesa rechazada sigue
+  escapándose del template sin tocar, así que cada caller tiene que resolver sus
+  errores dentro del modelo de respuesta en vez de lanzarlos.
+- **Abierto** — qué hace el éxito más allá de limpiar los campos nunca se cerró.
+  El template no cierra el sheet, así que quien conecte `onSubmit` decide si un
+  documento creado además lo descarta.
+
+---
+
+## Compartir el cierre del sheet-sobre-ruta entre las dos screens de sheet
+`2026-09-11` · `src/hooks/useBottomSheetScreen.ts`
+
+> Un sheet que en realidad es una ruta tiene que cerrarse dos veces — visualmente
+> y luego navegando atrás — y ese doble paso estaba a punto de copiarse y pegarse.
+
+- `/detail` y ahora `/new` son rutas `transparentModal` pintadas como bottom
+  sheet, así que cerrar una implica ocultar el sheet, dejar que termine la
+  animación de salida y solo entonces llamar a `goBack` — si no, la ruta se
+  desmonta a media animación y el sheet desaparece en vez de deslizarse.
+- `useBottomSheetScreen(sheetScreenRatio)` es ahora dueño de esa secuencia — el
+  flag `isVisible`, el aplazamiento con
+  `InteractionManager.runAfterInteractions(goBack)` y su cancelación — y cada
+  screen conserva solo su propia proporción de alto: `0.5` para el detalle,
+  `0.75` para el formulario, que tiene que encajar una cabecera, tres campos y un
+  botón fijado debajo.
+- **Descartado** — copiar el cuerpo de `useDocumentDetailScreen` dentro de
+  `useDocumentNewScreen`. El aplazamiento es de esos detalles que se arreglan en
+  una copia y no en la otra, y un sheet que desaparece en vez de cerrarse pasa
+  desapercibido con facilidad en una revisión.
+- **Coste** — `src/hooks/` guarda ahora un hook que solo pueden usar dos
+  screens, y la proporción de alto pasó a ser un parámetro, así que la
+  proporción de un sheet se decide en el call site mientras su ciclo de vida se
+  decide en el hook.
+- **Abierto** — presentar el formulario como una ruta en lugar de como un flag en
+  `DocumentListScreen` se especificó, no se sopesó aquí, así que la comparación
+  contra el estado inline nunca se argumentó.
+
+> **Superseded** el `2026-09-11` por [Presentar las screens de sheet como rutas formSheet nativas](#presentar-las-screens-de-sheet-como-rutas-formsheet-nativas) — una ruta `formSheet` nativa se cierra sola, así que ya no queda cierre en dos pasos que compartir.
+
+---
+
+## Resolver el submit sin conectar como un éxito en vez de fingir un fallo
+`2026-09-11` · `src/screens/documentNewScreen/resources/services.ts`
+
+> Todavía no hay endpoint de creación, y el contrato del formulario no tiene
+> forma de decir "no ha pasado nada".
+
+- `NewDocumentFormSubmitType` tiene que responder con éxito o con un error que
+  lleva un mensaje, así que un submit que no tiene nada detrás sigue teniendo
+  que elegir uno — y el template actúa según lo que reciba.
+- `submitNewDocumentWithoutPersistence` resuelve con éxito y no hace nada más. Su
+  nombre es toda la advertencia: el día que exista un repository de creación, ese
+  único binding es lo que se reemplaza, y ni la screen ni el template se mueven.
+- **Descartado** — responder con un error tipo "no implementado". Pinta un
+  mensaje rojo que el usuario no puede arreglar ni superar reintentando, y
+  ejercita el camino de fallo justo donde no ha fallado nada.
+- **Coste** — el template limpia sus campos al tener éxito, así que el sheet
+  informa ahora de un documento creado que nunca se guardó. Quien haga una demo
+  de esto verá un flujo de creación que funciona.
+- **Abierto** — si un éxito real debería además descartar el sheet sigue sin
+  responderse, heredado de la entrada del propio template; el stub lo deja
+  abierto.
+
+---
+
+## Entregar todo el ancho del sheet al contenido que trae su propio padding
+`2026-09-11` · `src/ui/organisms/bottomSheetNavigationWrapper/`
+
+> Un template que ya se paddea solo y dibuja reglas de borde a borde no puede
+> vivir dentro del margen de 16pt del propio sheet.
+
+- El `BottomSheet` de `@expo/ui` paddea a sus children por defecto en todas las
+  plataformas — 16pt a los lados — y el wrapper nunca pasaba `contentPadding`,
+  así que lo heredaba. Inofensivo para el texto centrado del sheet de detalle;
+  incorrecto para `NewDocumentFormTemplate`, que es dueño de su padding
+  `Spacing.three` y termina en un footer cuyo borde superior debería cruzar el
+  sheet entero.
+- `hasContentInset` (por defecto `true`) lo decide ahora, y la `View` de
+  contenido se estira a `width: '100%'` en vez de confiar en que el host la
+  dimensione. `DocumentNewScreen` es el único caller que apaga el inset.
+- **Descartado** — quitar el inset para todos. Es el valor correcto para
+  contenido que no trae padding propio, que es justo lo que demuestran los
+  stories del wrapper, y quitarlo reespaciaría ese contenido en silencio.
+- **Coste** — un cuarto booleano en un wrapper que ya llevaba tres, y una regla
+  de layout que el caller tiene que conocer: si apagas el inset, el padding pasa
+  a ser tu problema.
+
+> **Superseded** el `2026-09-11` por [Presentar las screens de sheet como rutas formSheet nativas](#presentar-las-screens-de-sheet-como-rutas-formsheet-nativas) — el contenido de la ruta llena el sheet, así que no hay inset de wrapper del que salirse.
+
+---
+
+## Separar por nombre los dos colores del sheet en vez de llamar background al scrim
+`2026-09-11` · `src/ui/organisms/bottomSheetNavigationWrapper/styles.ts`
+
+> Una prop llamada `backgroundColor` estaba pintando lo que hay detrás del sheet,
+> no el sheet.
+
+- `BOTTOM_SHEET_NAVIGATION_WRAPPER_BACKGROUND_COLOR` era un negro translúcido que
+  alimentaba `scrimColor`, así que el chrome propio del sheet — la zona del drag
+  indicator y, en iOS, el inset del home indicator — se quedaba con el valor por
+  defecto de la plataforma y se leía como un borde gris alrededor de un
+  formulario que se pinta a sí mismo con `Colors.background.default`.
+- Ahora están separados: `backgroundColor` es la superficie del sheet, conectada
+  a `containerColor` y con el blanco del theme por defecto, y `scrimColor` es el
+  velo de detrás, que conserva el negro translúcido.
+- **Descartado** — poner el constant existente en blanco donde estaba, siguiendo
+  conectado al scrim. Habría dejado la lista de detrás en blanco opaco en Android
+  en vez de atenuarla, y el borde gris se habría quedado igual.
+- **Coste** — una quinta prop, y la matriz de plataformas se ensancha en vez de
+  estrecharse: la superficie llega a Android, iOS 16.4+ y web; el velo solo a
+  Android.
+- **Abierto** — el velo sigue siendo un `#00000066` literal. La paleta no tiene
+  ningún rol translúcido del que sacarlo, así que se queda en hex hasta que
+  exista uno.
+
+> **Superseded** el `2026-09-11` por [Presentar las screens de sheet como rutas formSheet nativas](#presentar-las-screens-de-sheet-como-rutas-formsheet-nativas) — la plataforma pinta superficie y scrim; solo la superficie sigue siendo nuestra, vía `contentStyle`.
+
+---
+
+## Presentar las screens de sheet como rutas formSheet nativas
+`2026-09-11` · `src/app/_layout.tsx`
+
+> El sheet se estaba construyendo dos veces: una por el navegador al presentar la
+> ruta, y otra por un componente que presentaba un sheet dentro de ella.
+
+- `/detail` y `/new` eran rutas `transparentModal`, cada una pintando un
+  `BottomSheetNavigationWrapper` alrededor del `BottomSheet` de `@expo/ui`. Un
+  modal dentro de un modal, así que cerrar costaba dos pasos en un orden fijo
+  —ocultar el sheet, esperar su animación, y entonces sacar la ruta— y cada
+  asunto del sheet (scrim, inset, color de superficie, qué gestos cierran) había
+  que volver a exponerlo como prop.
+- expo-router llega al mismo sheet nativo desde la declaración de la ruta:
+  `presentation: 'formSheet'` con `sheetAllowedDetents` conservando las alturas
+  que tenían los ratios (`0.5` para el detalle, `0.75` para el formulario). Las
+  screens pintan ahora su contenido y nada más, y el cierre es de la plataforma.
+- Eso ha borrado el wrapper y sus diez ficheros, el aplazamiento de
+  `useBottomSheetScreen`, `useDocumentDetailScreen` entero, y con ellos las props
+  de inset y de color que las dos entradas de arriba acababan de introducir.
+- **Descartado** — conservar el wrapper por las escapatorias que documentaban sus
+  stories: modifiers de cierre por plataforma y un color de scrim para Android.
+  Ninguna ruta llegó a pasarlos nunca, así que eran mandos sin nadie al mando.
+- **Coste** — el control que queda es el que expone el navegador.
+  `sheetGrabberVisible` es solo de iOS, la lista de detents es toda la API de
+  dimensionado, y los interruptores separados de swipe y backdrop ya no existen.
+  `@expo/ui` es ahora una dependencia sin uso.
+- **Abierto** — esto no se ha ejecutado en dispositivo. Si `0.75` deja los campos
+  del formulario libres del teclado es justo lo que tiene que responder la
+  prueba; un segundo detent (`[0.75, 1]`) es la palanca si no lo hace.
+
+---
+
+## Añadir una capa de actions como contrapartida de escritura de las views
+`2026-09-11` · `src/core/actions/createDocumentAction/`
+
+> Una view responde a "qué pinta esta screen al cargar". Nada respondía a "qué
+> pasa cuando esta screen envía".
+
+- Crear un documento son tres pasos seguidos —leer el fichero elegido,
+  codificarlo, enviarlo— y cada uno puede fallar con un mensaje distinto.
+  Ponerlo en el hook de la screen haría que la screen orquestase dominios;
+  ponerlo en el dominio haría que un repositorio leyese el sistema de ficheros.
+- `src/core/actions/` replica exactamente `src/core/views/`: una carpeta por
+  operación, un punto de entrada, una carpeta de mappers nombrados por la
+  dirección que recorren, models, mocks y un test. La diferencia es la dirección
+  —una view abre en abanico con `Promise.allSettled` y devuelve estado por
+  sección; una action es una sola secuencia y devuelve un `ActionResultType`
+  (`ok`, o `error` con mensaje traducido y la causa cruda).
+- La screen conserva su forma: `documentNewScreen` sigue dando a la template un
+  `NewDocumentFormSubmitType`, y hace dos cosas con el resultado de la action —
+  traducirlo al modelo de respuesta de la template, y cerrar el sheet cuando dice
+  que el documento se ha creado. Ambas viven en `resources/`, así que el hook se
+  queda en cableado y el comportamiento se puede testear sin renderer.
+- **Descartado** — reutilizar `ViewSectionType` para el resultado: su rama
+  `aborted` no significa nada en un envío, y un caso `ok` que no lleva datos
+  habría necesitado un parámetro de tipo `void` en cada llamada.
+- **Coste** — una segunda unión de estados (`ActionStatusTypes`) conviviendo con
+  `ViewSectionStatusTypes`, y una segunda convención de carpetas que aprender.
+
+---
+
+## Simular el endpoint de creación dentro del repositorio, no por encima
+`2026-09-11` · `src/core/domains/document/repositories/createDocument.ts`
+
+> El endpoint todavía no existe. Todo lo que depende de su *forma* se puede
+> construir y probar igualmente hoy.
+
+- `createDocument` mapea el modelo al payload `{name, version, file_base_64,
+  file_name}` que tomará la API y luego espera 2000 ms como sustituto de la
+  petición. La llamada real está justo debajo, comentada, tomando la misma
+  variable `payload` — así que aterrizar el endpoint es borrar dos líneas y
+  descomentar dos.
+- El retardo no es decorado: es la única razón por la que se puede ver funcionar
+  el bloqueo de campos del formulario y la etiqueta `Enviando…` antes de que
+  haya servidor.
+- Mantener la simulación *dentro* del repositorio significa que la action, la
+  screen y sus tests se escriben contra la firma definitiva. Nada por encima del
+  dominio sabe que falta el endpoint.
+- **Descartado** — simular en la action o en la screen: el mapper del payload se
+  habría quedado sin quien lo llamase, y todas las capas de arriba habría que
+  reescribirlas al aterrizar el endpoint.
+- **Coste** — código comentado en `src/`, que la propia política del proyecto
+  prohíbe; una rama `DocumentError` que ningún test alcanza honestamente, porque
+  el sustituto nunca rechaza; y `@services/http` aún no tiene `post`, así que la
+  línea comentada no compilará tal cual está hasta que lo tenga.
+
+---
+
+## Leer el fichero a través de un port en vez de dejar que la action importe Expo
+`2026-09-11` · `src/services/fileReader/` · `eslint.config.js`
+
+> El trabajo de la action es orquestar. Saber que el base64 sale de
+> `new File(uri).base64()` no es orquestar.
+
+- `@services/fileReader` expone un solo método, `readAsBase64(uri)`, y su adapter
+  de Expo es el único fichero del proyecto autorizado a importar
+  `expo-file-system` — vigilado por el mismo bloque `no-restricted-imports` que
+  ya guarda las librerías de picker, storage, localización e i18n.
+- Los fallos vuelven como `FileReaderError` nombrando el uri, así que la action
+  nunca ve un tipo de error de Expo.
+- Para que el uri llegase siquiera hasta ahí, `InputDocument` ha tenido que dejar
+  de informar del *nombre* del fichero y pasar a informar del `PickedDocumentModel`
+  entero; el formulario guarda ahora `fileName` para lo que pinta y `fileUri`
+  para lo que envía.
+- **Descartado** — falsear también el base64, ya que el endpoint ya está
+  falseado: la codificación es la única parte real de este flujo, y falsearla
+  habría escondido si el uri cacheado del picker es legible siquiera.
+- **Coste** — una dependencia de runtime nueva (`expo-file-system@57`), una
+  quinta entrada en cada lista de imports restringidos, y el fichero entero se
+  sostiene en memoria como string base64, lo que no aguantará adjuntos grandes.
+
+---

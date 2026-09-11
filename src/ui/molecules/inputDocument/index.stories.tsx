@@ -3,6 +3,7 @@ import { StyleSheet, Text, View } from 'react-native'
 import type { Meta, StoryObj } from '@storybook/react-native-web-vite'
 
 import { Colors, Spacing } from '@constants/theme'
+import type { PickedDocumentModel } from '@services/documentPicker'
 import { LabelInput } from '@ui/molecules/labelInput'
 
 import type { InputDocumentProps } from '.'
@@ -60,8 +61,9 @@ const meta = {
     onSelectDocument: {
       control: false,
       description: [
-        'Fired with the picked document name. Not called when the user cancels,',
-        'and never called while `disabled`.',
+        'Fired with the picked document — its name and the uri its contents can',
+        'be read from. Not called when the user cancels, and never called while',
+        '`disabled`.',
       ].join(' '),
     },
   },
@@ -78,17 +80,17 @@ export default meta
 type Story = StoryObj<typeof meta>
 
 const SelectableInputDocument = ({ placeholder, disabled }: InputDocumentProps) => {
-  const [documentName, setDocumentName] = useState<string | undefined>(undefined)
+  const [document, setDocument] = useState<PickedDocumentModel | undefined>(undefined)
 
   return (
     <View style={styles.column}>
       <InputDocument
         placeholder={placeholder}
-        value={documentName}
+        value={document?.name}
         disabled={disabled}
-        onSelectDocument={setDocumentName}
+        onSelectDocument={setDocument}
       />
-      <Text style={styles.readout}>{documentName ?? 'nothing selected yet'}</Text>
+      <Text style={styles.readout}>{document?.uri ?? 'nothing selected yet'}</Text>
     </View>
   )
 }
@@ -129,7 +131,7 @@ export const InAForm: Story = {
   ),
 }
 
-/** Press it. The real system browser opens and the name lands below. */
+/** Press it. The real system browser opens and the uri lands below. */
 export const Live: Story = {
   render: (args) => <SelectableInputDocument {...args} />,
 }

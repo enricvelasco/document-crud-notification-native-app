@@ -49,7 +49,7 @@ export const useDocumentListScreen = (): UseDocumentListScreenModel => {
     void refreshDocumentListState({ setState, setIsRefreshing, signal: abortController.signal })
   }
 
-  const handleAddDocument = () => navigateTo(APP_ROUTES.documentDetail)
+  const handleAddDocument = () => navigateTo(APP_ROUTES.documentNew)
 
   const handleOpenNotifications = () => undefined
 

@@ -1,10 +1,18 @@
 import { httpService } from '@services/http'
 
+import { createDocumentModelToPayload } from './mappers/createDocumentModelToPayload'
 import { documentContributorPayloadToModel } from './mappers/documentContributorPayloadToModel'
 import { documentListPayloadToModel } from './mappers/documentListPayloadToModel'
 import { documentPayloadToModel } from './mappers/documentPayloadToModel'
-import { documentListMock, documentListPayloadMock, getDocumentListResponseMock } from './mocks/documentMock'
+import {
+  createDocumentMock,
+  createDocumentPayloadMock,
+  documentListMock,
+  documentListPayloadMock,
+  getDocumentListResponseMock,
+} from './mocks/documentMock'
 import { DocumentError } from './models'
+import { createDocument } from './repositories/createDocument'
 import { getDocumentList } from './repositories/getDocumentList'
 
 jest.mock('@services/http', () => ({
@@ -12,6 +20,8 @@ jest.mock('@services/http', () => ({
 }))
 
 const httpServiceGetMock = httpService.get as jest.Mock
+
+const CREATE_DOCUMENT_SIMULATED_DELAY_MS = 2000
 
 beforeEach(() => {
   httpServiceGetMock.mockReset()
@@ -95,5 +105,61 @@ describe('getDocumentList', () => {
     httpServiceGetMock.mockRejectedValue(transportError)
 
     await expect(getDocumentList()).rejects.toMatchObject({ cause: transportError })
+  })
+})
+
+describe('createDocumentModelToPayload', () => {
+  it('translates a create document model to the payload the endpoint expects', () => {
+    expect(createDocumentModelToPayload(createDocumentMock)).toEqual(createDocumentPayloadMock)
+  })
+
+  it('carries the base64 contents under the payload file key', () => {
+    const payload = createDocumentModelToPayload({ ...createDocumentMock, fileBase64: 'QUJD' })
+
+    expect(payload.file_base_64).toBe('QUJD')
+  })
+})
+
+describe('createDocument', () => {
+  beforeEach(() => {
+    jest.useFakeTimers()
+  })
+
+  afterEach(() => {
+    jest.useRealTimers()
+  })
+
+  it('resolves once the simulated request has answered', async () => {
+    const request = createDocument(createDocumentMock)
+
+    await jest.advanceTimersByTimeAsync(CREATE_DOCUMENT_SIMULATED_DELAY_MS)
+
+    await expect(request).resolves.toBeUndefined()
+  })
+
+  it('does not answer before the simulated delay has elapsed', async () => {
+    const settled = jest.fn()
+    void createDocument(createDocumentMock).then(settled)
+
+    await jest.advanceTimersByTimeAsync(CREATE_DOCUMENT_SIMULATED_DELAY_MS - 1)
+
+    expect(settled).not.toHaveBeenCalled()
+  })
+
+  it('does not reach the transport while the endpoint does not exist', async () => {
+    const request = createDocument(createDocumentMock)
+
+    await jest.advanceTimersByTimeAsync(CREATE_DOCUMENT_SIMULATED_DELAY_MS)
+    await request
+
+    expect(httpServiceGetMock).not.toHaveBeenCalled()
+  })
+
+  it('fails with a DocumentError when the request rejects', async () => {
+    jest.spyOn(globalThis, 'setTimeout').mockImplementation(() => {
+      throw new Error('Network is unreachable.')
+    })
+
+    await expect(createDocument(createDocumentMock)).rejects.toBeInstanceOf(DocumentError)
   })
 })

@@ -1,3 +1,6 @@
+export * from './createDocumentModel'
+export * from './createDocumentPayloadModel'
+export * from './createDocumentType'
 export * from './documentContributorModel'
 export * from './documentContributorPayloadModel'
 export * from './documentError'

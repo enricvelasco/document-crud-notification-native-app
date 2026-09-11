@@ -891,3 +891,250 @@ alternative it beat and what it cost. Ordered oldest first.
   from the UI, so the badge reports the failure without offering a way out of it.
 
 ---
+
+## Let the new-document form own its fields and `onSubmit` own the outcome
+`2026-09-11` · `src/ui/templates/newDocumentFormTemplate/`
+
+> The template can hold a half-typed name, but it has no business deciding what
+> a failed creation says to the user.
+
+- The form has three fields, a submit button and a failure path. Lifting the
+  field values to the screen means a re-render of the whole sheet per keystroke
+  over state nobody above the template can use; leaving the failure inside it
+  means the template inventing wording for a call it did not make.
+- The split follows who can answer the question. Values, `isSubmitting` and
+  whether the button is pressable stay in `useNewDocumentFormTemplate`;
+  `onSubmit` takes the values and answers with a `NewDocumentFormResponseModel`
+  — success, or an error carrying its own `message` — and the template only
+  paints it.
+- An error leaves the fields exactly as typed so a retry costs nothing, and
+  locks them rather than swapping the form for a spinner, so what is being
+  created stays readable while it is in flight.
+- **Rejected** — `onSubmit: () => void` with a separate `errorMessage` prop, the
+  shape `DocumentListTemplate` uses for its state. It works there because the
+  screen owns the documents; here it would force the screen to hold a piece of
+  state whose only reader is the template, and to keep it in step with a
+  submission the template already tracks.
+- **Cost** — two ways to fail now exist side by side: a rejected promise still
+  escapes the template untouched, so every caller must resolve its own errors
+  into the response model rather than throwing them.
+- **Open** — what success does beyond clearing the fields was never settled. The
+  template does not close the sheet, so whoever wires `onSubmit` decides whether
+  a created document also dismisses it.
+
+---
+
+## Share the sheet-over-route dismissal between both sheet screens
+`2026-09-11` · `src/hooks/useBottomSheetScreen.ts`
+
+> A sheet that is really a route has to close twice — visually, then by
+> navigating back — and that two-step was about to be copy-pasted.
+
+- `/detail` and now `/new` are both `transparentModal` routes painted as a
+  bottom sheet, so closing one means hiding the sheet, letting the exit
+  animation finish, and only then calling `goBack` — otherwise the route
+  unmounts mid-animation and the sheet vanishes instead of sliding away.
+- `useBottomSheetScreen(sheetScreenRatio)` now owns that sequence — the
+  `isVisible` flag, the `InteractionManager.runAfterInteractions(goBack)`
+  deferral and its cancellation — and each screen keeps only its own height
+  ratio: `0.5` for detail, `0.75` for the form, which has to fit a header, three
+  fields and a button pinned below them.
+- **Rejected** — copying `useDocumentDetailScreen`'s body into
+  `useDocumentNewScreen`. The deferral is the kind of detail that gets fixed in
+  one copy and not the other, and a sheet that disappears instead of closing is
+  easy to miss in review.
+- **Cost** — `src/hooks/` now holds a hook only two screens can use, and the
+  height ratio became a parameter, so a sheet's proportion is decided at the
+  call site while its lifecycle is decided in the hook.
+- **Open** — presenting the form as a route rather than as a flag on
+  `DocumentListScreen` was specified rather than weighed here, so the trade-off
+  against inline state was never argued.
+
+> **Superseded** on `2026-09-11` by [Present the sheet screens as native formSheet routes](#present-the-sheet-screens-as-native-formsheet-routes) — a native `formSheet` route pops itself, so there is no two-step dismissal left to share.
+
+---
+
+## Resolve the unwired submit as a success instead of faking a failure
+`2026-09-11` · `src/screens/documentNewScreen/resources/services.ts`
+
+> There is no create endpoint yet, and the form's contract has no way to say
+> "nothing happened".
+
+- `NewDocumentFormSubmitType` must answer with either success or an error
+  carrying a message, so a submit with nothing behind it still has to pick one —
+  and the template acts on whichever it gets.
+- `submitNewDocumentWithoutPersistence` resolves success and does nothing else.
+  Its name is the whole disclosure: the day a create repository exists, that one
+  binding is what gets replaced, and neither the screen nor the template moves.
+- **Rejected** — answering with an error such as "not implemented". It paints a
+  red message the user can neither fix nor retry past, and it exercises the
+  failure path in the one place where nothing actually failed.
+- **Cost** — the template clears its fields on success, so the sheet now reports
+  a document created that was never stored. Anyone demoing this sees a create
+  flow that works.
+- **Open** — whether a real success should also dismiss the sheet is still
+  unanswered, carried over from the template's own entry; the stub leaves it
+  open.
+
+---
+
+## Hand the sheet's full width to content that brings its own padding
+`2026-09-11` · `src/ui/organisms/bottomSheetNavigationWrapper/`
+
+> A template that already pads itself and draws edge-to-edge rules cannot live
+> inside the sheet's own 16pt gutter.
+
+- `@expo/ui`'s `BottomSheet` pads its children by default on every platform —
+  16pt sideways — and the wrapper never passed `contentPadding`, so it inherited
+  that. Harmless for the detail sheet's centred text; wrong for
+  `NewDocumentFormTemplate`, which owns its `Spacing.three` padding and ends in a
+  footer whose top border is supposed to span the sheet.
+- `hasContentInset` (default `true`) now decides it, and the inner content `View`
+  stretches to `width: '100%'` rather than relying on the host to size it.
+  `DocumentNewScreen` is the one caller that turns the inset off.
+- **Rejected** — dropping the inset for everyone. It is the right default for
+  content that brings no padding of its own, which is exactly what the wrapper's
+  stories demonstrate, and removing it would silently re-space that content.
+- **Cost** — a fourth boolean on a wrapper that already carries three, and a
+  layout rule the caller has to know about: turn the inset off and the padding
+  becomes your problem.
+
+> **Superseded** on `2026-09-11` by [Present the sheet screens as native formSheet routes](#present-the-sheet-screens-as-native-formsheet-routes) — the route's content fills the sheet, so there is no wrapper inset to opt out of.
+
+---
+
+## Name the sheet's two colours apart instead of calling the scrim a background
+`2026-09-11` · `src/ui/organisms/bottomSheetNavigationWrapper/styles.ts`
+
+> One prop called `backgroundColor` was painting the thing behind the sheet, not
+> the sheet.
+
+- `BOTTOM_SHEET_NAVIGATION_WRAPPER_BACKGROUND_COLOR` was a translucent black fed
+  to `scrimColor`, so the sheet's own chrome — the drag-indicator zone and, on
+  iOS, the home-indicator inset — kept the platform default and read as a grey
+  rim around a form that paints itself `Colors.background.default`.
+- The two are now separate: `backgroundColor` is the sheet's surface, wired to
+  `containerColor` and defaulting to the theme's white, and `scrimColor` is the
+  veil behind it, keeping the translucent black.
+- **Rejected** — turning the existing constant white where it was, still wired to
+  the scrim. It would have whited out the list behind the sheet on Android
+  instead of dimming it, and left the grey rim exactly as it was.
+- **Cost** — a fifth prop, and the platform matrix got wider rather than
+  narrower: the surface lands on Android, iOS 16.4+ and web, the veil on Android
+  alone.
+- **Open** — the veil is still a literal `#00000066`. The palette has no
+  translucent role to source it from, so it stays a hex until one exists.
+
+> **Superseded** on `2026-09-11` by [Present the sheet screens as native formSheet routes](#present-the-sheet-screens-as-native-formsheet-routes) — the platform paints both the surface and the scrim; only the surface stays ours, via `contentStyle`.
+
+---
+
+## Present the sheet screens as native formSheet routes
+`2026-09-11` · `src/app/_layout.tsx`
+
+> The sheet was being built twice: once by the navigator presenting the route,
+> and again by a component presenting a sheet inside it.
+
+- `/detail` and `/new` were `transparentModal` routes, each rendering a
+  `BottomSheetNavigationWrapper` around `@expo/ui`'s `BottomSheet`. A modal
+  inside a modal, so closing took two steps in a fixed order — hide the sheet,
+  wait out its animation, then pop the route — and every sheet concern (scrim,
+  inset, surface colour, which gestures dismiss) had to be re-exposed as a prop.
+- expo-router reaches the same native sheet from the route declaration:
+  `presentation: 'formSheet'` with `sheetAllowedDetents` keeping the heights the
+  ratios had (`0.5` for detail, `0.75` for the form). The screens now render
+  their content and nothing else, and dismissal is the platform's.
+- That deleted the wrapper and its ten files, the `useBottomSheetScreen`
+  deferral, `useDocumentDetailScreen` in full, and with them the inset and
+  colour props the two entries above had just introduced.
+- **Rejected** — keeping the wrapper for the escape hatches its stories
+  documented: per-platform dismissal modifiers and an Android scrim colour.
+  Neither route ever passed them, so they were knobs with no hand on them.
+- **Cost** — the control that is left is what the navigator exposes.
+  `sheetGrabberVisible` is iOS-only, the detent list is the whole sizing API, and
+  the separate swipe/backdrop dismissal switches are gone. `@expo/ui` is now an
+  unused dependency.
+- **Open** — this was not run on a device. Whether `0.75` leaves the form's
+  fields clear of the keyboard is exactly what the try-out has to answer; a
+  second detent (`[0.75, 1]`) is the lever if it does not.
+
+---
+
+## Add an action layer as the write-side counterpart of a view
+`2026-09-11` · `src/core/actions/createDocumentAction/`
+
+> A view answers "what does this screen paint on load". Nothing answered "what
+> happens when this screen submits".
+
+- Creating a document is three steps in a row — read the picked file, encode it,
+  post it — and each can fail with a different message. Putting that in the
+  screen's hook would make the screen orchestrate domains; putting it in the
+  domain would make a repository read the filesystem.
+- `src/core/actions/` mirrors `src/core/views/` exactly: one folder per
+  operation, an entry point, a mapper folder named for the direction it travels,
+  models, mocks and a test. The difference is the direction — a view fans out
+  with `Promise.allSettled` and returns per-section state, an action is a single
+  sequence and returns one `ActionResultType` (`ok`, or `error` with a
+  translated message and the raw cause).
+- The screen keeps its shape: `documentNewScreen` still hands the template a
+  `NewDocumentFormSubmitType`, and does two things with the action's result —
+  translates it into the template's response model, and closes the sheet when it
+  says the document was created. Both live in `resources/`, so the hook stays
+  wiring and the behaviour stays testable without a renderer.
+- **Rejected** — reusing `ViewSectionType` for the outcome: its `aborted` branch
+  is meaningless for a submit, and an `ok` case that carries no data would have
+  needed a `void` type parameter at every call site.
+- **Cost** — a second status union (`ActionStatusTypes`) living alongside
+  `ViewSectionStatusTypes`, and a second folder convention to learn.
+
+---
+
+## Simulate the create endpoint inside the repository, not above it
+`2026-09-11` · `src/core/domains/document/repositories/createDocument.ts`
+
+> The endpoint does not exist yet. Everything that depends on its *shape* can
+> still be built and tested today.
+
+- `createDocument` maps the model to the `{name, version, file_base_64,
+  file_name}` payload the API will take, then awaits a 2000 ms stand-in for the
+  request. The real call sits directly beneath it, commented, taking the same
+  `payload` variable — so landing the endpoint is deleting two lines and
+  uncommenting two.
+- The delay is not decoration: it is the only reason the form's disabled fields
+  and `Submitting…` label can be seen working before there is a server.
+- Keeping the simulation *inside* the repository means the action, the screen
+  and their tests are written against the final signature. Nothing above the
+  domain knows the endpoint is missing.
+- **Rejected** — stubbing at the action or screen level: the payload mapper
+  would then have had no caller, and every layer above would have to be rewritten
+  once the endpoint landed.
+- **Cost** — commented-out code in `src/`, which the project's own policy
+  otherwise forbids; a `DocumentError` branch no test can reach honestly, since
+  the stand-in never rejects; and `@services/http` has no `post` yet, so the
+  commented line will not compile as written until it does.
+
+---
+
+## Read the file through a port instead of letting the action import Expo
+`2026-09-11` · `src/services/fileReader/` · `eslint.config.js`
+
+> The action's job is to orchestrate. Knowing that base64 comes from
+> `new File(uri).base64()` is not orchestration.
+
+- `@services/fileReader` exposes one method, `readAsBase64(uri)`, and its Expo
+  adapter is the only file in the project allowed to import `expo-file-system` —
+  enforced by the same `no-restricted-imports` block that already guards the
+  picker, storage, localization and i18n libraries.
+- Failures come back as `FileReaderError` naming the uri, so the action never
+  sees an Expo error type.
+- Getting the uri there at all meant `InputDocument` had to stop reporting a file
+  *name* and start reporting the whole `PickedDocumentModel`; the form now keeps
+  `fileName` for what it paints and `fileUri` for what it sends.
+- **Rejected** — faking the base64 too, since the endpoint is already faked: the
+  encoding is the one part of this flow that is real work, and a fake would have
+  hidden whether the picker's cached uri is readable at all.
+- **Cost** — a new runtime dependency (`expo-file-system@57`), a fifth entry in
+  every restricted-import list, and the whole file is held in memory as a base64
+  string, which will not hold for large attachments.
+
+---
