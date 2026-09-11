@@ -7,11 +7,12 @@ export const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: Spacing.four,
+    padding: Spacing.four,
   },
-  title: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: Colors.text.default,
+  message: {
+    fontSize: 15,
+    lineHeight: Spacing.four,
+    textAlign: 'center',
+    color: Colors.text.light,
   },
 })

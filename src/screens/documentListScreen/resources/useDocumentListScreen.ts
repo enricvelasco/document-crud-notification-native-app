@@ -74,7 +74,7 @@ export const useDocumentListScreen = (): UseDocumentListScreenModel => {
 
   const handleAddDocument = () => navigateTo(APP_ROUTES.documentNew)
 
-  const handleOpenNotifications = () => undefined
+  const handleOpenNotifications = () => navigateTo(APP_ROUTES.notificationList)
 
   return {
     state,

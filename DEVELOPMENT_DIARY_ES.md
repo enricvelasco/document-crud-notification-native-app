@@ -1245,3 +1245,69 @@ a más reciente.
   reinicia al arrancar a diferencia del layout que tiene al lado.
 
 ---
+
+## Acumular el feed de notificaciones en el context, no solo su contador
+`2026-09-11` · `src/context/notificationContext/` · `src/hooks/useNotifications.ts`
+
+> Una notificación que solo se cuenta es una notificación que nadie podrá leer.
+
+- El context exponía `count` e `isError` y nada más, así que cada notificación
+  se registraba en consola y desaparecía — el websocket es la única fuente y no
+  hay repositorio al que volver a pedirla.
+- `useNotificationSubscription` guarda ahora las notificaciones en sí, la más
+  reciente primero, y `NotificationEntryModel` extiende el modelo de dominio
+  con un `id` que el context asigna a partir del tamaño de la lista, porque el
+  payload no trae ninguno.
+- **Descartado** — usar como clave `documentId` más `timestamp`: dos ediciones
+  del mismo documento dentro del mismo segundo chocan, y la lista se come una
+  fila sin decir nada.
+- **Descartado** — un `notificationListView` bajo `src/core/views/`: los views
+  existen para llamar a repositorios y mapear una sola vez al cargar, y este
+  feed llega por push sin carga que mapear, así que la screen lo mapea en sus
+  propios `resources/`.
+- **Coste** — la lista crece durante toda la vida del proceso sin tope ni
+  desalojo, así que una sesión abierta todo el día retiene en memoria cada
+  notificación recibida.
+
+---
+
+## Marcar las notificaciones como leídas al abrir su pantalla
+`2026-09-11` · `src/screens/notificationListScreen/` · `src/context/notificationContext/`
+
+> Leerlas es la única señal disponible, así que tiene que ser la que valga.
+
+- El badge contaba cada notificación que el stream había entregado y nada lo
+  limpiaba, así que solo sabía subir.
+- La screen llama a `markAsRead` una vez al montar y el context devuelve
+  `count` a cero conservando la lista acumulada, lo que convierte el badge en
+  «sin leer desde la última vez que miraste» y deja la lista como registro
+  completo.
+- **Descartado** — un flag `read` por notificación: nada en este feed es
+  direccionable, sin id de servidor ni persistencia, así que un estado de
+  lectura por elemento sería estado inventado que muere con el proceso igual.
+- **Coste** — una notificación que llega con la pantalla abierta vuelve a subir
+  el badge aunque el usuario la esté mirando de frente.
+
+---
+
+## Avisar de una suscripción caída encima del feed, no en su lugar
+`2026-09-11` · `src/ui/templates/notificationListTemplate/`
+
+> Sustituir el feed por su mensaje de error tira la única copia que hay de él.
+
+- Tras tres fallos seguidos el controller del stream cierra el socket y el
+  context levanta `isError`; hasta ahora eso solo cambiaba el badge de la
+  campana, y la página que había detrás no tenía forma de contar qué pasaba.
+- El template pinta un banner de alerta con un botón de reconexión encima de la
+  lista, y el botón llama a `startSubscription`, que limpia el error y abre un
+  socket nuevo.
+- Las notificaciones ya recibidas siguen pintadas debajo, porque una reconexión
+  no las reemite y nada más las guarda.
+- **Descartado** — cambiar el cuerpo por un estado de error como hace
+  `documentListTemplate`: allí los documentos se pueden volver a pedir, aquí la
+  lista en pantalla es la única copia que existe.
+- **Coste** — la página puede mostrar un feed de aspecto sano bajo un banner
+  que dice que el feed está caído, lo cual es exacto pero solo si se lee el
+  banner.
+
+---

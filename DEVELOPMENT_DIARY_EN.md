@@ -1191,3 +1191,64 @@ alternative it beat and what it cost. Ordered oldest first.
   deliberately not stored, so it resets on launch unlike the layout beside it.
 
 ---
+
+## Accumulate the notification feed in the context, not just its count
+`2026-09-11` · `src/context/notificationContext/` · `src/hooks/useNotifications.ts`
+
+> A notification that is only counted is a notification nobody can ever read.
+
+- The context exposed `count` and `isError` and nothing else, so every
+  notification was logged to the console and then gone — the websocket is the
+  only source and no repository can be asked for it again.
+- `useNotificationSubscription` now keeps the notifications themselves, newest
+  first, and `NotificationEntryModel` extends the domain model with an `id` the
+  context assigns from the list length, because the payload carries none.
+- **Rejected** — keying the list on `documentId` plus `timestamp`: two edits to
+  the same document inside the same second collide, and the list then silently
+  drops a row.
+- **Rejected** — a `notificationListView` under `src/core/views/`: views exist
+  to call repositories and map once on load, and this feed arrives by push with
+  no load to map, so the screen maps it in its own `resources/`.
+- **Cost** — the list grows for the life of the process with no cap and no
+  eviction, so a session left open all day holds every notification in memory.
+
+---
+
+## Mark the notifications as read by opening their page
+`2026-09-11` · `src/screens/notificationListScreen/` · `src/context/notificationContext/`
+
+> Reading them is the only signal available, so it has to be the one that counts.
+
+- The badge counted every notification the stream had ever delivered and
+  nothing cleared it, so it only ever went up.
+- The screen calls `markAsRead` once on mount and the context resets `count` to
+  zero while keeping the accumulated list, which turns the badge into "unread
+  since you last looked" and leaves the list as the complete record.
+- **Rejected** — a `read` flag per notification: nothing in this feed is
+  addressable, with no server id and no persistence, so per-item read state
+  would be invented state that dies with the process regardless.
+- **Cost** — a notification arriving while the page is open raises the badge
+  again even though the user is looking straight at it.
+
+---
+
+## Report a dead subscription above the feed, not in place of it
+`2026-09-11` · `src/ui/templates/notificationListTemplate/`
+
+> Replacing the feed with its error message throws away the only copy of it.
+
+- After three consecutive failures the stream controller closes the socket and
+  the context flips `isError`; until now that only changed the bell badge, and
+  the page behind it had no way to say what had happened.
+- The template paints an alert banner with a reconnect button above the list,
+  and the button calls `startSubscription`, which clears the error and opens a
+  fresh socket.
+- The notifications already received stay painted underneath, because a
+  reconnect does not replay them and nothing else stores them.
+- **Rejected** — swapping the body for an error state the way
+  `documentListTemplate` does: there the documents can be fetched again, here
+  the list on screen is the only copy that exists.
+- **Cost** — the page can show a healthy-looking feed under a banner saying the
+  feed is down, which is accurate but only if the banner is read.
+
+---

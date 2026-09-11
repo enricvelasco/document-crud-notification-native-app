@@ -59,7 +59,7 @@ const meta = {
     onDismiss: () => {},
     children: (
       <View style={styles.content}>
-        <Text style={styles.title}>detalle</Text>
+        <Text style={styles.title}>Contenido</Text>
       </View>
     ),
   },
@@ -69,7 +69,7 @@ export default meta
 
 type Story = StoryObj<typeof meta>
 
-/** The sheet as the detail route paints it. */
+/** The sheet with content sitting in the middle of it. */
 export const Default: Story = {}
 
 /** Content that fills the sheet rather than sitting in the middle of it. */
