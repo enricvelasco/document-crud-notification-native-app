@@ -1167,3 +1167,27 @@ alternative it beat and what it cost. Ordered oldest first.
   stored value lands.
 
 ---
+
+## Apply the sort in the template and reduce the criteria to name
+`2026-09-11` · `src/ui/templates/documentListTemplate/` · `src/translations/`
+
+> A sort control that only highlights the chosen option is a button that lies.
+
+- `sort` travelled from the screen into the template and no further: it set the
+  dropdown's selected value and was never used to order anything, so the list
+  came out in whatever order the API returned.
+- `Most recent` was a criterion the list could never honour —
+  `DocumentListItemModel` carries id, title, description, contributors and
+  attachments, and no date to compare — so the two options are now `nameAsc`
+  and `nameDesc` over `title`.
+- `sortDocumentList` sorts a copy with `localeCompare` and is applied in
+  `DocumentListBody`, on the single path that hands documents to the list, so
+  no state has to be kept in step with the criterion.
+- **Rejected** — reordering in `documentListView` or asking the API for a
+  sorted list: both turn a reorder of rows already on screen into a reload, and
+  the view maps once on load by design.
+- **Cost** — the array is copied and re-sorted on every render of the body
+  rather than only when the criterion changes, and the criterion is
+  deliberately not stored, so it resets on launch unlike the layout beside it.
+
+---

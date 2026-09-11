@@ -1,6 +1,6 @@
 export const DocumentListSortTypes = {
-  Title: 'title',
-  Recent: 'recent',
+  NameAsc: 'nameAsc',
+  NameDesc: 'nameDesc',
 } as const
 
 export type DocumentListSortTypes =

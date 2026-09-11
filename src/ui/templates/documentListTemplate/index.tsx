@@ -92,6 +92,7 @@ export const DocumentListTemplate = ({
 
         <DocumentListBody
           state={state}
+          sort={sort}
           layout={layout}
           isRefreshing={isRefreshing}
           onRefresh={onRefresh}

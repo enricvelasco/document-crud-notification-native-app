@@ -168,7 +168,7 @@ const meta = {
 
   args: {
     state: { type: DocumentListStateTypes.Content, documents: DOCUMENTS },
-    sort: DocumentListSortTypes.Title,
+    sort: DocumentListSortTypes.NameAsc,
     layout: DocumentListLayoutTypes.List,
     notificationCount: 3,
     hasNotificationError: false,
