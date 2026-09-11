@@ -1267,3 +1267,32 @@ alternative it beat and what it cost. Ordered oldest first.
   be re-checked whenever `react-native-screens` changes how it presents sheets.
 
 ---
+
+## Render the empty and the failed list through the same scrollable list
+`2026-09-11` · `src/ui/templates/documentListTemplate/`
+
+> A message painted beside the list instead of inside it has nothing to pull.
+
+- The empty list could already be reloaded: `List` hands its `ListEmptyComponent`
+  to the `FlatList` that carries the `RefreshControl`, so a list that came back
+  with no documents always had the gesture. The failed one did not —
+  `DocumentListBody` returned `DocumentListMessage` as a plain `View` beside the
+  list, and a `View` does not scroll, so the one state where reloading is the
+  only way forward was the one state that could not ask for it.
+- Both no-document states now go through `DocumentListContent`: the error state
+  passes zero documents and its own failure text as the empty message. The
+  message the user reads is the same `DocumentListMessage` as before — only the
+  container underneath it changed, from a sibling `View` to the list itself.
+- Two named mappers carry the difference, so the body keeps one early return for
+  loading and no nested branch: `toDocumentListDocuments` hands over documents
+  only in the content state, and `toDocumentListEmptyMessage` prefers the failure
+  reason over the translated "no documents yet".
+- **Rejected** — giving `DocumentListMessage` its own `ScrollView` and a second
+  `RefreshControl`: two refresh controls on one screen kept in step with a single
+  `isRefreshing`, for a component that already had a scroll container one level
+  up.
+- **Cost** — the error message is now a `ListEmptyComponent`, so it inherits the
+  list's `contentContainerStyle` and its column count; an error view that later
+  wants its own spacing has to reckon with the grid it is rendered into.
+
+---

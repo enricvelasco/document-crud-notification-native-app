@@ -1329,3 +1329,34 @@ a más reciente.
   sheets.
 
 ---
+
+## Pintar la lista vacía y la fallida a través de la misma lista scrollable
+`2026-09-11` · `src/ui/templates/documentListTemplate/`
+
+> Un mensaje pintado al lado de la lista en vez de dentro no tiene de dónde tirar.
+
+- La lista vacía ya se podía recargar: `List` entrega su `ListEmptyComponent` al
+  `FlatList` que lleva el `RefreshControl`, así que una lista que volvía sin
+  documentos siempre tuvo el gesto. La fallida no — `DocumentListBody` devolvía
+  `DocumentListMessage` como una `View` plana al lado de la lista, y una `View`
+  no hace scroll, así que el único estado en el que recargar es la única salida
+  era justo el que no podía pedirlo.
+- Los dos estados sin documentos pasan ahora por `DocumentListContent`: el de
+  error entrega cero documentos y su propio texto de fallo como mensaje de vacío.
+  El mensaje que lee el usuario es el mismo `DocumentListMessage` de antes — lo
+  que cambia es el contenedor de debajo, de una `View` hermana a la propia lista.
+- Dos mappers con nombre cargan con la diferencia, de modo que el body mantiene
+  un único early return para la carga y ninguna rama anidada:
+  `toDocumentListDocuments` entrega documentos solo en el estado de contenido, y
+  `toDocumentListEmptyMessage` prefiere el motivo del fallo antes que el
+  "todavía no hay documentos" traducido.
+- **Rechazado** — dar a `DocumentListMessage` su propio `ScrollView` y un segundo
+  `RefreshControl`: dos refresh controls en una pantalla sincronizados con un
+  único `isRefreshing`, para un componente que ya tenía un contenedor scrollable
+  un nivel por encima.
+- **Coste** — el mensaje de error es ahora un `ListEmptyComponent`, así que
+  hereda el `contentContainerStyle` de la lista y su número de columnas; una
+  vista de error que más adelante quiera su propio espaciado tendrá que contar
+  con la rejilla en la que se pinta.
+
+---

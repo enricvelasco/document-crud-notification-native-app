@@ -1,9 +1,11 @@
 import type { TranslateType } from '@services/translate'
 
-import { type DocumentListItemModel, DocumentListSortTypes } from './models'
+import { type DocumentListItemModel, DocumentListSortTypes, DocumentListStateTypes } from './models'
 import { getDocumentListSortOptions } from './resources/getDocumentListSortOptions'
 import { isDocumentListSort } from './resources/isDocumentListSort'
 import { sortDocumentList } from './resources/sortDocumentList'
+import { toDocumentListDocuments } from './resources/toDocumentListDocuments'
+import { toDocumentListEmptyMessage } from './resources/toDocumentListEmptyMessage'
 
 const toDocument = (title: string): DocumentListItemModel => ({
   id: title,
@@ -73,5 +75,40 @@ describe('getDocumentListSortOptions', () => {
       { value: DocumentListSortTypes.NameAsc, label: '_DOCUMENT_LIST_TEMPLATE_SORT_NAME_ASC' },
       { value: DocumentListSortTypes.NameDesc, label: '_DOCUMENT_LIST_TEMPLATE_SORT_NAME_DESC' },
     ])
+  })
+})
+
+describe('toDocumentListDocuments', () => {
+  it('hands over the documents the content state is holding', () => {
+    expect(toDocumentListDocuments({ type: DocumentListStateTypes.Content, documents })).toEqual(documents)
+  })
+
+  it('has no documents to hand over while the list is still loading', () => {
+    expect(toDocumentListDocuments({ type: DocumentListStateTypes.Loading })).toEqual([])
+  })
+
+  it('has no documents to hand over when loading them failed', () => {
+    expect(toDocumentListDocuments({
+      type: DocumentListStateTypes.Error,
+      message: 'No connection',
+    })).toEqual([])
+  })
+})
+
+describe('toDocumentListEmptyMessage', () => {
+  const translate: TranslateType = (key) => key
+
+  it('explains why nothing loaded when loading the documents failed', () => {
+    expect(toDocumentListEmptyMessage(
+      { type: DocumentListStateTypes.Error, message: 'No connection' },
+      translate,
+    )).toBe('No connection')
+  })
+
+  it('says the list is empty when it loaded without documents', () => {
+    expect(toDocumentListEmptyMessage(
+      { type: DocumentListStateTypes.Content, documents: [] },
+      translate,
+    )).toBe('_DOCUMENT_LIST_TEMPLATE_EMPTY')
   })
 })
