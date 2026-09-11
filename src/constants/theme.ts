@@ -13,6 +13,11 @@ export const Colors = {
     light: '#D8E7FE',
     dark: '#1C5FC4',
   },
+  error: {
+    default: '#E5484D',
+    light: '#FFE8E8',
+    dark: '#C62A2F',
+  },
   border: {
     default: '#D8D9E0',
     light: '#EDEEF0',

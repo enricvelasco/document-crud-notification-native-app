@@ -11,6 +11,7 @@
   "_DOCUMENT_LIST_VIEW_DESCRIPTION": "Version {{version}}",
   "_DOCUMENT_LIST_VIEW_LOAD_ERROR": "The documents could not be loaded.",
   "_DOCUMENT_LIST_TEMPLATE_NOTIFICATIONS": "Notifications",
+  "_DOCUMENT_LIST_TEMPLATE_NOTIFICATIONS_ERROR": "Notifications unavailable",
   "_DOCUMENT_LIST_TEMPLATE_SORT": "Sort",
   "_DOCUMENT_LIST_TEMPLATE_SORT_TITLE": "Title",
   "_DOCUMENT_LIST_TEMPLATE_SORT_RECENT": "Most recent",

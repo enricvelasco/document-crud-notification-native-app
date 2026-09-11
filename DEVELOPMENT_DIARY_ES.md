@@ -906,3 +906,32 @@ a más reciente.
   decidió no depender en su primera entrada.
 
 ---
+
+## Avisar del feed de notificaciones roto en el propio badge, no al lado
+`2026-09-11` · `src/ui/atoms/badge/` · `src/screens/documentListScreen/`
+
+> La campana ya sabía que el stream había muerto; simplemente seguía mostrando el último count que tenía, y eso se lee como actual.
+
+- `useNotifications` expone `isError` desde que el stream se rinde tras tres
+  fallos, pero nadie lo pintaba. Un count del que no se puede responder es peor
+  que ningún count, porque un número obsoleto no lleva ninguna marca de serlo.
+- `Badge` recibe `isError`: fondo rojo, `!` en lugar del número, y visible en
+  cero — el único caso en que un count a cero pinta algo. El count se ignora en
+  vez de borrarse, así que la pastilla vuelve al número en cuanto se va el error.
+- El hook de la screen lee `count` e `isError` del hook de contexto y los baja
+  como `notificationCount` y `hasNotificationError`. El template sigue recibiendo
+  props planas y nunca toca el contexto, así que se puede pintar desde Storybook.
+  `disabled` gana a `isError` — un control inerte no debería gritar en rojo
+  mientras el icono de al lado se apaga en gris.
+- **Descartado** — un banner o un toast sobre la lista: el fallo es de la
+  campana, no de los documentos, y un mensaje que se cierra ya no está cuando el
+  usuario se pregunta si el count es real. El badge es justo donde estaría el
+  número equivocado.
+- **Coste** — `!` no explica nada por sí solo, y el fondo rojo no le dice
+  absolutamente nada a un lector de pantalla, así que el label accesible tiene
+  que cambiar a `_DOCUMENT_LIST_TEMPLATE_NOTIFICATIONS_ERROR` para transmitir el
+  estado. Aparece un cuarto rol de paleta (`Colors.error`) para una sola pastilla.
+- **Abierto** — `startSubscription` está conectado y sigue sin llamarse: no hay
+  retry desde la UI, así que el badge informa del fallo sin ofrecer una salida.
+
+---

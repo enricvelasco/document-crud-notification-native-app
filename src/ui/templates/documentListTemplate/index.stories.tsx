@@ -148,6 +148,14 @@ const meta = {
       control: { type: 'number', min: 0, max: 99 },
       description: 'What the bell badge shows.',
     },
+    hasNotificationError: {
+      control: 'boolean',
+      description: [
+        'The notification feed dropped. Turns the bell badge red with `!` and swaps the',
+        'accessible label, so the count is never shown stale.',
+      ].join(' '),
+      table: { defaultValue: { summary: 'false' } },
+    },
     initialLayout: {
       control: 'inline-radio',
       options: Object.values(DocumentListLayoutTypes),
@@ -159,6 +167,7 @@ const meta = {
     state: { type: DocumentListStateTypes.Content, documents: DOCUMENTS },
     sort: DocumentListSortTypes.Title,
     notificationCount: 3,
+    hasNotificationError: false,
     onSortChange: () => {},
     onAddDocument: () => {},
     onOpenNotifications: () => {},
@@ -208,6 +217,13 @@ export const Empty: Story = {
 export const WithoutNotifications: Story = {
   args: {
     notificationCount: 0,
+  },
+}
+
+/** The feed is down. The documents are unaffected — only the bell reports it. */
+export const NotificationsError: Story = {
+  args: {
+    hasNotificationError: true,
   },
 }
 

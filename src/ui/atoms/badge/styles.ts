@@ -17,6 +17,9 @@ export const styles = StyleSheet.create({
     borderColor: Colors.background.default,
     backgroundColor: Colors.primary.default,
   },
+  rootError: {
+    backgroundColor: Colors.error.default,
+  },
   rootDisabled: {
     backgroundColor: Colors.border.dark,
   },
