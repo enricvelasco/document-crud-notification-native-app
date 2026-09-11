@@ -6,6 +6,6 @@ import { DocumentListSortTypes } from '../models'
 export const getDocumentListSortOptions = (
   translate: TranslateType,
 ): readonly DropdownOptionModel[] => [
-  { value: DocumentListSortTypes.Title, label: translate('_DOCUMENT_LIST_TEMPLATE_SORT_TITLE') },
-  { value: DocumentListSortTypes.Recent, label: translate('_DOCUMENT_LIST_TEMPLATE_SORT_RECENT') },
+  { value: DocumentListSortTypes.NameAsc, label: translate('_DOCUMENT_LIST_TEMPLATE_SORT_NAME_ASC') },
+  { value: DocumentListSortTypes.NameDesc, label: translate('_DOCUMENT_LIST_TEMPLATE_SORT_NAME_DESC') },
 ]

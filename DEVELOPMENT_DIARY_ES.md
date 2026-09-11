@@ -1221,3 +1221,27 @@ a más reciente.
   que aterrice el valor guardado.
 
 ---
+
+## Aplicar el orden en el template y reducir los criterios al nombre
+`2026-09-11` · `src/ui/templates/documentListTemplate/` · `src/translations/`
+
+> Un control de orden que solo resalta la opción elegida es un botón que miente.
+
+- `sort` viajaba de la screen al template y ahí se quedaba: fijaba el valor
+  seleccionado del dropdown y nunca se usaba para ordenar nada, así que la
+  lista salía en el orden en que la devolvía la API.
+- `Más recientes` era un criterio que la lista no podía cumplir —
+  `DocumentListItemModel` lleva id, title, description, contributors y
+  attachments, y ninguna fecha que comparar — así que las dos opciones son
+  ahora `nameAsc` y `nameDesc` sobre `title`.
+- `sortDocumentList` ordena una copia con `localeCompare` y se aplica en
+  `DocumentListBody`, en el único camino que entrega los documentos a la lista,
+  de modo que no hay ningún estado que mantener al día con el criterio.
+- **Descartado** — reordenar en `documentListView` o pedir la lista ya ordenada
+  a la API: ambas convierten en una recarga lo que es reordenar filas que ya
+  están en pantalla, y el view mapea una sola vez al cargar por diseño.
+- **Coste** — el array se copia y se reordena en cada render del body y no solo
+  cuando cambia el criterio, y el criterio no se guarda a propósito, así que se
+  reinicia al arrancar a diferencia del layout que tiene al lado.
+
+---

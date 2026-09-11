@@ -1,3 +1,4 @@
+export * from './documentListComparatorType'
 export * from './documentListItemModel'
 export * from './documentListLayoutTypes'
 export * from './documentListSortTypes'

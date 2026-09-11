@@ -38,7 +38,7 @@ export interface UseDocumentListScreenModel {
 export const useDocumentListScreen = (): UseDocumentListScreenModel => {
   const { navigateTo } = useAppNavigation()
   const { count, isError } = useNotifications()
-  const [sort, setSort] = useState<DocumentListSortTypes>(DocumentListSortTypes.Title)
+  const [sort, setSort] = useState<DocumentListSortTypes>(DocumentListSortTypes.NameAsc)
   const [layout, setLayout] = useState<DocumentListLayoutTypes>(DocumentListLayoutTypes.List)
   const [state, setState] = useState<DocumentListStateModel>(DOCUMENT_LIST_LOADING_STATE)
   const [isRefreshing, setIsRefreshing] = useState(false)
