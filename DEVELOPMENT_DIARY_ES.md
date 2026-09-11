@@ -1398,3 +1398,37 @@ a más reciente.
   pantalla tuviera y no viniera de un repositorio se va con ella.
 
 ---
+## Subir el aviso de sin conexión a nivel de ventana para que ningún sheet nativo lo tape
+`2026-09-11` · `src/ui/atoms/windowOverlay/`
+
+> Un overlay renderizado en el árbol de React sigue siendo hijo de la root view,
+> y un form sheet nativo no lo es.
+
+- `NetworkStatusGate` vivía junto a `<Stack>` en el layout raíz como un `View`
+  posicionado en absoluto, lo que lo pone por encima de todos sus hermanos de
+  *React* pero por debajo de cualquier cosa que UIKit presente por su cuenta. La
+  ruta `new` está declarada como `presentation: 'formSheet'`, así que perder la
+  red con el formulario de documento abierto dejaba el aviso pintándose debajo:
+  renderizado, alcanzable por los tests, invisible.
+- Un átomo `WindowOverlay` se hace cargo ahora de la colocación: en iOS envuelve
+  a sus hijos en `FullWindowOverlay`, que engancha su contenedor directamente al
+  `UIWindow` y queda por tanto por encima del view controller del sheet
+  presentado; en el resto de plataformas sigue siendo el mismo `View` absoluto
+  de siempre.
+- La bifurcación por plataforma es un predicado con nombre,
+  `hasWindowLevelOverlay`, y no un `Platform.OS` en línea ni un `index.ios.tsx`,
+  para que la única razón por la que existe la rama esté dicha en un sitio al
+  que un test llega — aquí Jest corre un solo proyecto y nunca cargaría el
+  fichero con sufijo de plataforma.
+- Android se queda con el `View` a propósito, no como plan B: su form sheet es
+  un `BottomSheetBehavior` dentro de la misma ventana, así que el overlay de
+  nivel raíz ya se dibuja encima y `FullWindowOverlay` solo dejaría un warning.
+- **Descartado** — envolver el aviso en el `<Modal>` de React Native: presenta
+  desde `[self reactViewController]`, que en la ruta `new` ya está presentando
+  el form sheet, así que UIKit rechazaría la segunda presentación.
+- **Coste** — en iOS el subárbol del overlay vive fuera de la root view, así que
+  es invisible para cualquier cosa que recorra la jerarquía nativa, y hay que
+  revisar la rama cada vez que `react-native-screens` cambie cómo presenta los
+  sheets.
+
+---

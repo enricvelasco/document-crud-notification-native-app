@@ -1334,3 +1334,33 @@ alternative it beat and what it cost. Ordered oldest first.
   held that did not come from a repository goes with it.
 
 ---
+## Raise the offline notice to window level so native sheets cannot cover it
+`2026-09-11` · `src/ui/atoms/windowOverlay/`
+
+> An overlay rendered in the React tree is still a child of the root view, and a
+> native form sheet is not.
+
+- `NetworkStatusGate` sat next to `<Stack>` in the root layout as an absolutely
+  positioned `View`, which is above every *React* sibling but below anything
+  UIKit presents on its own. The `new` route is declared `presentation:
+  'formSheet'`, so losing the network while the document form was open left the
+  notice painting underneath it — rendered, reachable by tests, invisible.
+- A `WindowOverlay` atom now owns the placement: on iOS it wraps the children in
+  `FullWindowOverlay`, which attaches its container straight to the `UIWindow`
+  and therefore sits above the presented sheet's view controller; everywhere
+  else it stays the same absolute `View` it always was.
+- The platform split is a named predicate, `hasWindowLevelOverlay`, rather than
+  an inline `Platform.OS` check or an `index.ios.tsx`, so the one reason the
+  branch exists is stated in a place a test can reach — Jest runs a single
+  project here and would never load the platform-suffixed file.
+- Android keeps the plain `View` deliberately, not as a fallback: its form sheet
+  is `BottomSheetBehavior` inside the same window, so the root-level overlay
+  already draws on top and `FullWindowOverlay` would only log a warning.
+- **Rejected** — wrapping the notice in React Native's `<Modal>`: it presents
+  from `[self reactViewController]`, which on the `new` route is already
+  presenting the form sheet, so UIKit would refuse the second presentation.
+- **Cost** — the overlay's subtree lives outside the root view on iOS, so it is
+  invisible to anything that walks the native hierarchy, and the branch has to
+  be re-checked whenever `react-native-screens` changes how it presents sheets.
+
+---

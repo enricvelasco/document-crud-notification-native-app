@@ -1,9 +1,7 @@
-import { View } from 'react-native'
-
+import { WindowOverlay } from '@ui/atoms/windowOverlay'
 import { NetworkStatusSheet } from '@ui/organisms/networkStatusSheet'
 
 import { useNetworkStatusGate } from './resources/useNetworkStatusGate'
-import { styles } from './styles'
 
 export const NetworkStatusGate = () => {
   const { isOffline, status, isRetrying, handleRetry } = useNetworkStatusGate()
@@ -11,8 +9,8 @@ export const NetworkStatusGate = () => {
   if (!isOffline) return null
 
   return (
-    <View style={styles.root}>
+    <WindowOverlay>
       <NetworkStatusSheet status={status} isRetrying={isRetrying} onRetry={handleRetry} />
-    </View>
+    </WindowOverlay>
   )
 }
