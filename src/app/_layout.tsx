@@ -9,8 +9,6 @@ const SHEET_SCREEN_OPTIONS = {
   contentStyle: { backgroundColor: Colors.background.default },
 } as const
 
-const DOCUMENT_DETAIL_SHEET_DETENTS = [0.5]
-
 const DOCUMENT_NEW_SHEET_DETENTS = [0.75]
 
 const RootLayout = () => {
@@ -19,13 +17,10 @@ const RootLayout = () => {
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="index" />
         <Stack.Screen
-          name="detail"
-          options={{ ...SHEET_SCREEN_OPTIONS, sheetAllowedDetents: DOCUMENT_DETAIL_SHEET_DETENTS }}
-        />
-        <Stack.Screen
           name="new"
           options={{ ...SHEET_SCREEN_OPTIONS, sheetAllowedDetents: DOCUMENT_NEW_SHEET_DETENTS }}
         />
+        <Stack.Screen name="notifications" />
       </Stack>
     </AppContextProvider>
   )

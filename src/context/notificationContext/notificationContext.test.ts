@@ -2,10 +2,12 @@ import { type NotificationError, subscribeToNotifications } from '@core/domains/
 import { notificationMock } from '@core/domains/notification/mocks/notificationMock'
 
 import {
+  addNotificationEntry,
   createNotificationStreamController,
   logNotification,
   logNotificationError,
   MAX_NOTIFICATION_FAILURES,
+  toNotificationEntry,
 } from './resources/services'
 
 jest.mock('@core/domains/notification', () => ({
@@ -188,5 +190,49 @@ describe('createNotificationStreamController', () => {
     failStream(MAX_NOTIFICATION_FAILURES - 1)
 
     expect(onFailureLimitReachedMock).not.toHaveBeenCalled()
+  })
+})
+
+describe('toNotificationEntry', () => {
+  it('keeps every field of the notification it was given', () => {
+    expect(toNotificationEntry(notificationMock, 0)).toMatchObject(notificationMock)
+  })
+
+  it('tells two notifications about the same document apart by their sequence', () => {
+    const first = toNotificationEntry(notificationMock, 0)
+    const second = toNotificationEntry(notificationMock, 1)
+
+    expect(first.id).not.toBe(second.id)
+  })
+})
+
+describe('addNotificationEntry', () => {
+  it('puts the newest notification first', () => {
+    const notifications = addNotificationEntry([], notificationMock)
+    const otherNotification = { ...notificationMock, documentTitle: 'Sour Ale' }
+
+    expect(addNotificationEntry(notifications, otherNotification)[0]).toMatchObject(otherNotification)
+  })
+
+  it('keeps the notifications it already had', () => {
+    const notifications = addNotificationEntry([], notificationMock)
+
+    expect(addNotificationEntry(notifications, notificationMock)).toHaveLength(2)
+  })
+
+  it('leaves the list it was given untouched', () => {
+    const notifications = addNotificationEntry([], notificationMock)
+
+    addNotificationEntry(notifications, notificationMock)
+
+    expect(notifications).toHaveLength(1)
+  })
+
+  it('gives every accumulated notification its own key', () => {
+    const first = addNotificationEntry([], notificationMock)
+    const second = addNotificationEntry(first, notificationMock)
+    const third = addNotificationEntry(second, notificationMock)
+
+    expect(new Set(third.map((notification) => notification.id)).size).toBe(3)
   })
 })

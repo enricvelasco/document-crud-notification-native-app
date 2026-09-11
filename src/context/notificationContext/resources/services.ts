@@ -1,4 +1,4 @@
-import type { NotificationStreamControllerModel, NotificationStreamControllerOptionsModel } from '@context'
+import type { NotificationEntryModel, NotificationStreamControllerModel, NotificationStreamControllerOptionsModel } from '@context'
 import {
   type NotificationError,
   type NotificationModel,
@@ -20,6 +20,17 @@ export const logNotification = (notification: NotificationModel): void =>
 
 export const logNotificationError = (error: NotificationError): void =>
   console.error(NOTIFICATION_LOG_LABEL, error)
+
+export const toNotificationEntry = (
+  notification: NotificationModel,
+  sequence: number,
+): NotificationEntryModel => ({ ...notification, id: `${sequence}-${notification.documentId}` })
+
+export const addNotificationEntry = (
+  notifications: readonly NotificationEntryModel[],
+  notification: NotificationModel,
+): readonly NotificationEntryModel[] =>
+  [toNotificationEntry(notification, notifications.length), ...notifications]
 
 interface NotificationStreamStateModel {
   subscription: NotificationSubscriptionModel | null

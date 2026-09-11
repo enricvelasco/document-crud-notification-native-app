@@ -12,7 +12,21 @@ export const useNotifications = (): UseNotificationsModel => {
 
   if (!notifications) throw new Error(MISSING_PROVIDER_MESSAGE)
 
-  const { count, isError, startSubscription, stopSubscription } = notifications
+  const {
+    notifications: entries,
+    count,
+    isError,
+    markAsRead,
+    startSubscription,
+    stopSubscription,
+  } = notifications
 
-  return { count, isError, startSubscription, stopSubscription }
+  return {
+    notifications: entries,
+    count,
+    isError,
+    markAsRead,
+    startSubscription,
+    stopSubscription,
+  }
 }
